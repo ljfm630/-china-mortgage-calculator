@@ -18,7 +18,19 @@ if (stored.prepaymentAmount === undefined) {
 let prepaymentWasEdited = stored.prepaymentAmount !== undefined
 
 const $ = (selector) => document.querySelector(selector)
+const requiredElement = (selector) => {
+  const element = $(selector)
+  if (!element) throw new Error(`页面缺少必需元素：${selector}`)
+  return element
+}
 const money = (value) => `${new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0)} 元`
+const initialSimulation = simulatePrepayment({
+  currentPrincipal: state.currentBalance,
+  prepaymentAmount: state.prepaymentAmount,
+  annualRate: LOAN_CONTEXT.annualRate,
+  currentMinimumPayment: state.minimumPayment,
+  officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
+})
 
 $('#app').innerHTML = `
   <header class="page-header">
@@ -45,7 +57,7 @@ $('#app').innerHTML = `
         <div><dt>还款方式</dt><dd>国管公积金${LOAN_CONTEXT.repaymentMethod}</dd></div>
         <div><dt>原贷款金额</dt><dd>${money(LOAN_CONTEXT.originalPrincipal)}</dd></div>
         <div><dt>原贷款期限</dt><dd>${LOAN_CONTEXT.originalTermMonths} 期</dd></div>
-        <div><dt>官方剩余期数</dt><dd>${LOAN_CONTEXT.officialRemainingMonths} 期</dd></div>
+        <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">${LOAN_CONTEXT.officialRemainingMonths} 期</dd></div>
       </dl>
 
       <div class="loan-records" aria-label="贷款记录和利率记录">
@@ -86,7 +98,7 @@ $('#app').innerHTML = `
         <div><span>提前还款后本金</span><strong id="principalAfter">—</strong></div>
       </div>
       <div class="applied-row"><span>本次提前还款</span><strong id="appliedAmount">—</strong></div>
-      <div class="applied-row"><span>规划测算剩余期数</span><strong id="plannedMonths">—</strong></div>
+      <div class="applied-row"><span>规划测算剩余期数</span><strong id="plannedMonths">${initialSimulation.estimatedMonthsAfter} 期（规划测算）</strong></div>
 
       <div class="estimate-grid">
         <div><span>预计节省利息</span><strong id="interestSaved">—</strong></div>
@@ -95,7 +107,26 @@ $('#app').innerHTML = `
       <p class="assumption">按当前条件规划测算，预计可缩短约 <b id="monthsSavedText">—</b>。测算结果仅用于个人还款规划，实际最低还款额、剩余期限及利息以国管公积金中心后续核定为准。</p>
     </section>
   </main>
-b>>>>> main
+
+  <footer>本页面为个人还款规划工具。实际贷款余额、最低还款额、利息及提前还款规则，以国管住房公积金管理中心系统为准。</footer>
+`
+
+function moneyInput(key, label, hint = '') {
+  return `<label class="money-field">
+    <span>${label}</span>
+    <div class="money-input"><input id="${key}" data-key="${key}" type="number" min="0" step="0.01" inputmode="decimal" aria-label="${label}"><b>元</b></div>
+    ${hint ? `<small>${hint}</small>` : ''}
+  </label>`
+}
+
+const simulationElements = {
+  principalBefore: requiredElement('#principalBefore'),
+  appliedAmount: requiredElement('#appliedAmount'),
+  principalAfter: requiredElement('#principalAfter'),
+  plannedMonths: requiredElement('#plannedMonths'),
+  interestSaved: requiredElement('#interestSaved'),
+  monthsSaved: requiredElement('#monthsSaved'),
+  monthsSavedText: requiredElement('#monthsSavedText'),
 }
 
 function render() {
