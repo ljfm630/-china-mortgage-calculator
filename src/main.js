@@ -85,12 +85,13 @@ $('#app').innerHTML = `
         <div><span>提前还款后本金</span><strong id="principalAfter">—</strong></div>
       </div>
       <div class="applied-row"><span>本次提前还款</span><strong id="appliedAmount">—</strong></div>
+      <div class="applied-row"><span>规划测算剩余期数</span><strong id="plannedMonths">—</strong></div>
 
       <div class="estimate-grid">
         <div><span>预计节省利息</span><strong id="interestSaved">—</strong></div>
-        <div><span>预计提前还清</span><strong id="monthsSaved">—</strong></div>
+        <div><span>预计可缩短</span><strong id="monthsSaved">—</strong></div>
       </div>
-      <p class="assumption">按当前年利率和最低还款额保持不变进行逐月估算。</p>
+      <p class="assumption">按当前条件规划测算，预计可缩短约 <b id="monthsSavedText">—</b>。测算结果仅用于个人还款规划，实际最低还款额、剩余期限及利息以国管公积金中心后续核定为准。</p>
     </section>
   </main>
 
@@ -119,6 +120,7 @@ function render() {
     prepaymentAmount: requested,
     annualRate: LOAN_CONTEXT.annualRate,
     currentMinimumPayment: state.minimumPayment,
+    officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
   })
 
   $('#principalBefore').textContent = money(result.principalBeforePrepayment)

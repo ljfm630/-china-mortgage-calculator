@@ -80,9 +80,10 @@ export function projectLoan({ principal, annualRate, monthlyPayment, extraPrinci
 
 /**
  * 比较“仅按当前最低还款额”与“现在提前还一笔后仍按该金额还款”两种规划。
- * 当前余额已经包含所有历史还款影响，因此不会再次扣除 2025 年的 10 万元。
+ * 当前余额已经包含所有历史还款影响，因此不会再次扣除 2026 年的 10 万元。
  */
-export function simulatePrepayment({ currentPrincipal, prepaymentAmount, annualRate, currentMinimumPayment, startDate }) {
+export function simulatePrepayment({ currentPrincipal, prepaymentAmount, annualRate, currentMinimumPayment, officialRemainingMonths, startDate }) {
+  assertPositiveInteger(officialRemainingMonths, '官方剩余期数')
   const common = {
     principal: currentPrincipal,
     annualRate,
@@ -92,6 +93,14 @@ export function simulatePrepayment({ currentPrincipal, prepaymentAmount, annualR
   const baseline = projectLoan(common)
   const afterPrepayment = projectLoan({ ...common, extraPrincipal: prepaymentAmount })
   const comparable = baseline.payable && afterPrepayment.payable
+  const plannedRemainingMonths = afterPrepayment.prepayment === 0
+    ? officialRemainingMonths
+    : afterPrepayment.months
+  const estimatedMonthsSaved = afterPrepayment.payable
+    ? Math.max(0, officialRemainingMonths - plannedRemainingMonths)
+    : null
+  const projectionStartDate = parseLocalDate(startDate)
+  const officialPayoffDate = projectionStartDate ? addMonthsClamped(projectionStartDate, officialRemainingMonths) : null
 
   return {
     principalBeforePrepayment: afterPrepayment.principalBeforePrepayment,
@@ -100,10 +109,11 @@ export function simulatePrepayment({ currentPrincipal, prepaymentAmount, annualR
     estimatedInterestBefore: baseline.totalInterest,
     estimatedInterestAfter: afterPrepayment.totalInterest,
     estimatedInterestSaved: comparable ? fromCents(Math.max(0, toCents(baseline.totalInterest) - toCents(afterPrepayment.totalInterest))) : null,
-    estimatedMonthsBefore: baseline.months,
-    estimatedMonthsAfter: afterPrepayment.months,
-    estimatedMonthsSaved: comparable ? Math.max(0, baseline.months - afterPrepayment.months) : null,
-    estimatedPayoffDateBefore: baseline.payoffDate,
+    officialRemainingMonths,
+    estimatedMonthsBefore: officialRemainingMonths,
+    estimatedMonthsAfter: plannedRemainingMonths,
+    estimatedMonthsSaved,
+    estimatedPayoffDateBefore: officialPayoffDate ? formatDate(officialPayoffDate) : null,
     estimatedPayoffDateAfter: afterPrepayment.payoffDate,
     payable: afterPrepayment.payable,
   }
@@ -156,4 +166,9 @@ function assertNonNegativeNumber(value, label) {
   if (typeof value === 'string' && value.trim() === '') throw new TypeError(`${label}必须是非负数`)
   const number = Number(value)
   if (!Number.isFinite(number) || number < 0) throw new TypeError(`${label}必须是非负数`)
+}
+
+function assertPositiveInteger(value, label) {
+  const number = Number(value)
+  if (!Number.isInteger(number) || number <= 0) throw new TypeError(`${label}必须是正整数`)
 }

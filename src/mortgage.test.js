@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { LOAN_CONTEXT, projectLoan, simulatePrepayment, toCents } from './mortgage.js'
 
 describe('北京国管公积金自由还款规划核心', () => {
@@ -25,6 +26,7 @@ describe('北京国管公积金自由还款规划核心', () => {
       prepaymentAmount: 30_000,
       annualRate: 2.85,
       currentMinimumPayment: 5_000,
+      officialRemainingMonths: 296,
       startDate: '2026-10-04',
     })
 
@@ -51,10 +53,48 @@ describe('北京国管公积金自由还款规划核心', () => {
   })
 
   it('提前还款不能超过当前本金', () => {
-    const result = simulatePrepayment({ currentPrincipal: 20_000, prepaymentAmount: 30_000, annualRate: 2.85, currentMinimumPayment: 1_000 })
+    const result = simulatePrepayment({ currentPrincipal: 20_000, prepaymentAmount: 30_000, annualRate: 2.85, currentMinimumPayment: 1_000, officialRemainingMonths: 24 })
     assert.equal(result.appliedPrepayment, 20_000)
     assert.equal(result.principalAfterPrepayment, 0)
     assert.equal(result.estimatedMonthsAfter, 0)
+  })
+
+  it('未提前还款时严格使用官方 337 期，不以最低还款额反推基准期数', () => {
+    const result = simulatePrepayment({
+      currentPrincipal: 1_012_206.88,
+      prepaymentAmount: 0,
+      annualRate: 2.60,
+      currentMinimumPayment: 4_256.67,
+      officialRemainingMonths: 337,
+    })
+    assert.equal(result.officialRemainingMonths, 337)
+    assert.equal(result.estimatedMonthsBefore, 337)
+    assert.equal(result.estimatedMonthsAfter, 337)
+    assert.equal(result.estimatedMonthsSaved, 0)
+  })
+
+  it('3 万元提前还款的缩短月份相对于官方 337 期计算', () => {
+    const result = simulatePrepayment({
+      currentPrincipal: 1_012_206.88,
+      prepaymentAmount: 30_000,
+      annualRate: 2.60,
+      currentMinimumPayment: 4_256.67,
+      officialRemainingMonths: 337,
+    })
+    assert.equal(result.principalAfterPrepayment, 982_206.88)
+    assert.equal(result.estimatedMonthsBefore, 337)
+    assert.equal(result.estimatedMonthsAfter, 321)
+    assert.equal(result.estimatedMonthsSaved, 16)
+    assert.equal(result.estimatedInterestSaved, 30_995.22)
+  })
+
+  it('页面保留官方当前数据并明确区分官方与规划期数', () => {
+    const source = readFileSync(new URL('./main.js', import.meta.url), 'utf8')
+    assert.match(source, /currentBalance: 1_012_206\.88/)
+    assert.match(source, /minimumPayment: 4_256\.67/)
+    assert.match(source, /annualRate: LOAN_CONTEXT\.annualRate/)
+    assert.match(source, /officialRemainingMonths: LOAN_CONTEXT\.officialRemainingMonths/)
+    assert.match(source, /规划测算剩余期数/)
   })
 
   it('最低还款不足以覆盖利息时给出不可还清状态', () => {
