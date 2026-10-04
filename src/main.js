@@ -95,26 +95,7 @@ $('#app').innerHTML = `
       <p class="assumption">按当前条件规划测算，预计可缩短约 <b id="monthsSavedText">—</b>。测算结果仅用于个人还款规划，实际最低还款额、剩余期限及利息以国管公积金中心后续核定为准。</p>
     </section>
   </main>
-
-  <footer>本页面为个人还款规划工具。实际贷款余额、最低还款额、利息及提前还款规则，以国管住房公积金管理中心系统为准。</footer>
-`
-
-function moneyInput(key, label, hint = '') {
-  return `<label class="money-field">
-    <span>${label}</span>
-    <div class="money-input"><input id="${key}" data-key="${key}" type="number" min="0" step="0.01" inputmode="decimal" aria-label="${label}"><b>元</b></div>
-    ${hint ? `<small>${hint}</small>` : ''}
-  </label>`
-}
-
-const simulationElements = {
-  principalBefore: $('#principalBefore'),
-  appliedAmount: $('#appliedAmount'),
-  principalAfter: $('#principalAfter'),
-  plannedMonths: $('#plannedMonths'),
-  interestSaved: $('#interestSaved'),
-  monthsSaved: $('#monthsSaved'),
-  monthsSavedText: $('#monthsSavedText'),
+b>>>>> main
 }
 
 function render() {
