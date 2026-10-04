@@ -6,11 +6,17 @@ const MAX_MONTHS = 1200
  */
 export const LOAN_CONTEXT = Object.freeze({
   originalPrincipal: 1_160_000,
-  annualRate: 2.85,
+  loanDate: '2024-10-17',
+  annualRate: 2.60,
   originalTermMonths: 360,
+  officialRemainingMonths: 337,
   repaymentMethod: '自由还款',
+  rateHistory: Object.freeze([
+    Object.freeze({ from: '2024-10-17', to: '2025-12-31', annualRate: 2.85 }),
+    Object.freeze({ from: '2026-01-01', to: null, annualRate: 2.60 }),
+  ]),
   historicalPrepayments: Object.freeze([
-    Object.freeze({ date: '2025-01', amount: 100_000 }),
+    Object.freeze({ date: '2026（利率调整后）', amount: 100_000 }),
   ]),
 })
 

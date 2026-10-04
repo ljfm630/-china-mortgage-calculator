@@ -1,9 +1,9 @@
 import { LOAN_CONTEXT, simulatePrepayment, suggestedPrepayment } from './mortgage.js'
 
-const STORAGE_KEY = 'gjj-prepayment-planner-v1'
+const STORAGE_KEY = 'gjj-prepayment-planner-v2'
 const DEFAULTS = {
-  currentBalance: 1_060_000,
-  minimumPayment: 5_000,
+  currentBalance: 1_012_206.88,
+  minimumPayment: 4_256.67,
   savings: 80_000,
   prepaymentAmount: 30_000,
 }
@@ -30,7 +30,7 @@ $('#app').innerHTML = `
     <section class="card" aria-labelledby="loan-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">贷</span>
-        <div><span class="eyebrow">贷款信息</span><h2 id="loan-title">当前贷款</h2></div>
+        <div><span class="eyebrow">国管公积金系统实际数据</span><h2 id="loan-title">当前贷款</h2></div>
       </div>
 
       <div class="input-list">
@@ -40,9 +40,19 @@ $('#app').innerHTML = `
 
       <dl class="facts">
         <div><dt>年利率</dt><dd>${LOAN_CONTEXT.annualRate}%</dd></div>
+        <div><dt>放款日期</dt><dd>${LOAN_CONTEXT.loanDate}</dd></div>
+        <div><dt>还款方式</dt><dd>国管公积金${LOAN_CONTEXT.repaymentMethod}</dd></div>
         <div><dt>原贷款金额</dt><dd>${money(LOAN_CONTEXT.originalPrincipal)}</dd></div>
-        <div><dt>原贷款期限</dt><dd>${LOAN_CONTEXT.originalTermMonths} 个月</dd></div>
+        <div><dt>原贷款期限</dt><dd>${LOAN_CONTEXT.originalTermMonths} 期</dd></div>
+        <div><dt>官方剩余期数</dt><dd>${LOAN_CONTEXT.officialRemainingMonths} 期</dd></div>
       </dl>
+
+      <div class="loan-records" aria-label="贷款记录和利率记录">
+        <h3>贷款记录 / 利率记录</h3>
+        <div class="record-row"><span>2024-10-17—2025-12-31</span><strong>2.85%</strong></div>
+        <div class="record-row"><span>2026-01-01 起</span><strong>2.60%</strong></div>
+        <div class="record-row"><span>2026 年利率调整后</span><strong>提前还款 ${money(100_000)}</strong></div>
+      </div>
     </section>
 
     <section class="card" aria-labelledby="fund-title">
@@ -63,7 +73,7 @@ $('#app').innerHTML = `
     <section class="card" aria-labelledby="simulation-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">算</span>
-        <div><span class="eyebrow">即时测算</span><h2 id="simulation-title">如果现在提前还款</h2></div>
+        <div><span class="eyebrow">规划测算结果</span><h2 id="simulation-title">如果现在提前还款</h2></div>
       </div>
 
       ${moneyInput('prepaymentAmount', '本次提前还款金额')}

@@ -37,6 +37,12 @@ h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: -.025em; }
 .facts dt, .reserve-row span, .applied-row span { color: #6e6e73; font-size: 12px; }
 .facts dd, .reserve-row strong, .applied-row strong { margin: 0; font-size: 13px; font-weight: 650; text-align: right; }
 
+.loan-records { margin-top: 19px; padding: 15px; border-radius: 15px; background: #f7f7f9; }
+.loan-records h3 { margin: 0 0 8px; color: #6e6e73; font-size: 11px; letter-spacing: .02em; }
+.record-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; }
+.record-row span { color: #77777c; font-size: 11px; }
+.record-row strong { font-size: 11px; text-align: right; }
+
 .reserve-row { margin-top: 18px; }
 .available-result { margin-top: 16px; padding: 18px; border-radius: 16px; background: #f1f7f3; }
 .available-result span, .available-result small { display: block; color: #647168; font-size: 11px; }

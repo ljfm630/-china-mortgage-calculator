@@ -6,10 +6,16 @@ describe('北京国管公积金自由还款规划核心', () => {
   it('保留已知合同事实和历史提前还款，但不反推当前余额', () => {
     assert.deepEqual(LOAN_CONTEXT, {
       originalPrincipal: 1_160_000,
-      annualRate: 2.85,
+      loanDate: '2024-10-17',
+      annualRate: 2.60,
       originalTermMonths: 360,
+      officialRemainingMonths: 337,
       repaymentMethod: '自由还款',
-      historicalPrepayments: [{ date: '2025-01', amount: 100_000 }],
+      rateHistory: [
+        { from: '2024-10-17', to: '2025-12-31', annualRate: 2.85 },
+        { from: '2026-01-01', to: null, annualRate: 2.60 },
+      ],
+      historicalPrepayments: [{ date: '2026（利率调整后）', amount: 100_000 }],
     })
   })
 
