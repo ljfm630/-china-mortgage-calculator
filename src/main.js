@@ -126,10 +126,8 @@ function render() {
   $('#principalBefore').textContent = money(result.principalBeforePrepayment)
   $('#appliedAmount').textContent = money(result.appliedPrepayment)
   $('#principalAfter').textContent = money(result.principalAfterPrepayment)
-  $('#plannedMonths').textContent = result.payable ? `${result.estimatedMonthsAfter} 期（规划测算）` : '待完善'
   $('#interestSaved').textContent = result.estimatedInterestSaved === null ? '待完善' : money(result.estimatedInterestSaved)
   $('#monthsSaved').textContent = result.estimatedMonthsSaved === null ? '待完善' : `${result.estimatedMonthsSaved} 个月`
-  $('#monthsSavedText').textContent = result.estimatedMonthsSaved === null ? '待完善' : `${result.estimatedMonthsSaved} 个月`
 
   const warning = $('#amountWarning')
   const aboveAvailable = requested > available
