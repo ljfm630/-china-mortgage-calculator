@@ -1,4 +1,3 @@
-import './style.css'
 import { calculateMortgage } from './mortgage.js'
 
 const state = {
