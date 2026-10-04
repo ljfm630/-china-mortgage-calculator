@@ -2,6 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { LOAN_CONTEXT, projectLoan, simulatePrepayment, toCents } from './mortgage.js'
+import { renderSimulationResult } from './simulation-view.js'
 
 describe('北京国管公积金自由还款规划核心', () => {
   it('保留已知合同事实和历史提前还款，但不反推当前余额', () => {
@@ -88,13 +89,33 @@ describe('北京国管公积金自由还款规划核心', () => {
     assert.equal(result.estimatedInterestSaved, 30_995.22)
   })
 
-  it('页面保留官方当前数据并明确区分官方与规划期数', () => {
+  it('页面保留官方当前数据并明确传入官方期数', () => {
     const source = readFileSync(new URL('./main.js', import.meta.url), 'utf8')
     assert.match(source, /currentBalance: 1_012_206\.88/)
     assert.match(source, /minimumPayment: 4_256\.67/)
     assert.match(source, /annualRate: LOAN_CONTEXT\.annualRate/)
     assert.match(source, /officialRemainingMonths: LOAN_CONTEXT\.officialRemainingMonths/)
-    assert.match(source, /规划测算剩余期数/)
+  })
+
+  it('把 3 万元提前还款结果实际写入 plannedMonths DOM 元素', () => {
+    const result = simulatePrepayment({
+      currentPrincipal: 1_012_206.88,
+      prepaymentAmount: 30_000,
+      annualRate: 2.60,
+      currentMinimumPayment: 4_256.67,
+      officialRemainingMonths: 337,
+    })
+    const element = () => ({ textContent: '—' })
+    const elements = {
+      principalBefore: element(), appliedAmount: element(), principalAfter: element(),
+      plannedMonths: element(), interestSaved: element(), monthsSaved: element(), monthsSavedText: element(),
+    }
+
+    renderSimulationResult(elements, result, (value) => `${value.toLocaleString('zh-CN')} 元`)
+
+    assert.equal(elements.plannedMonths.textContent, '321 期（规划测算）')
+    assert.equal(elements.monthsSaved.textContent, '16 个月')
+    assert.notEqual(elements.plannedMonths.textContent, '—')
   })
 
   it('最低还款不足以覆盖利息时给出不可还清状态', () => {
