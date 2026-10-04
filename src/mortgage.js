@@ -1,71 +1,174 @@
+const MAX_MONTHS = 1200
+
 /**
- * 生成完整还款计划。所有输入和内部金额均为元，展示时再格式化。
- * @param {{ principal: number, annualRate: number, years: number, method: 'annuity'|'equalPrincipal' }} input
+ * 已知合同事实仅作为上下文保存；未来规划必须使用用户从系统抄录的当前余额和
+ * 当前最低还款额，不能用原本金减去历史记录来反推当前余额。
  */
-export function calculateMortgage(input) {
-  const principal = roundMoney(Number(input.principal))
-  const annualRate = Number(input.annualRate)
-  const years = Number(input.years)
-  const method = input.method
+export const LOAN_CONTEXT = Object.freeze({
+  originalPrincipal: 1_160_000,
+  loanDate: '2024-10-17',
+  annualRate: 2.60,
+  originalTermMonths: 360,
+  officialRemainingMonths: 337,
+  repaymentMethod: '自由还款',
+  rateHistory: Object.freeze([
+    Object.freeze({ from: '2024-10-17', to: '2025-12-31', annualRate: 2.85 }),
+    Object.freeze({ from: '2026-01-01', to: null, annualRate: 2.60 }),
+  ]),
+  historicalPrepayments: Object.freeze([
+    Object.freeze({ date: '2026（利率调整后）', amount: 100_000 }),
+  ]),
+})
 
-  if (!Number.isFinite(principal) || principal < 0) throw new Error('贷款本金必须是非负数')
-  if (!Number.isFinite(annualRate) || annualRate < 0) throw new Error('年利率必须是非负数')
-  if (!Number.isFinite(years) || years <= 0) throw new Error('贷款期限必须大于 0')
-  if (!['annuity', 'equalPrincipal'].includes(method)) throw new Error('不支持的还款方式')
+/** 金额统一先转成“分”，避免在逐月测算中累积二进制浮点误差。 */
+export function toCents(value) {
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.max(0, Math.round(number * 100)) : 0
+}
 
-  const periods = Math.round(years * 12)
-  const monthlyRate = annualRate / 100 / 12
-  const schedule = method === 'annuity'
-    ? annuitySchedule(principal, monthlyRate, periods)
-    : equalPrincipalSchedule(principal, monthlyRate, periods)
-  const totalPayment = roundMoney(schedule.reduce((sum, row) => sum + row.payment, 0))
-  const totalInterest = roundMoney(schedule.reduce((sum, row) => sum + row.interest, 0))
+export function fromCents(value) {
+  return value / 100
+}
 
+/**
+ * 以用户从公积金系统抄录的余额和最低还款额为基准，做固定利率逐月规划。
+ * 这不是对国管公积金自由还款最低还款额算法的复刻。
+ */
+export function projectLoan({ principal, annualRate, monthlyPayment, extraPrincipal = 0, monthlyExtra = 0, startDate }) {
+  assertNonNegativeMoney(principal, '当前剩余本金')
+  assertNonNegativeMoney(extraPrincipal, '提前还款金额')
+  assertNonNegativeMoney(monthlyExtra, '每月额外还款金额')
+  assertNonNegativeMoney(monthlyPayment, '当前最低还款额')
+  assertNonNegativeNumber(annualRate, '年利率')
+
+  const currentPrincipal = toCents(principal)
+  const prepayment = Math.min(currentPrincipal, toCents(extraPrincipal))
+  let balance = currentPrincipal - prepayment
+  const payment = toCents(monthlyPayment)
+  const extra = toCents(monthlyExtra)
+  const monthlyRate = Number(annualRate) / 1200
+  let totalInterest = 0
+  let months = 0
+  const schedule = []
+
+  while (balance > 0 && months < MAX_MONTHS) {
+    const interest = Math.round(balance * monthlyRate)
+    const available = payment + extra
+    if (available <= interest) return { payable: false, balance: fromCents(balance), totalInterest: fromCents(totalInterest), months: Infinity, payoffDate: null, schedule }
+    const principalPaid = Math.min(balance, available - interest)
+    const paid = principalPaid + interest
+    balance -= principalPaid
+    totalInterest += interest
+    months += 1
+    schedule.push({ month: months, payment: fromCents(paid), principal: fromCents(principalPaid), interest: fromCents(interest), remaining: fromCents(balance) })
+  }
+
+  const date = parseLocalDate(startDate)
+  const payoffDate = date ? addMonthsClamped(date, months) : null
   return {
-    principal,
-    annualRate,
-    monthlyRate,
-    periods,
-    method,
-    monthlyPayment: method === 'annuity' ? schedule[0].payment : undefined,
-    firstPayment: schedule[0].payment,
-    lastPayment: schedule.at(-1).payment,
-    monthlyDecrease: method === 'equalPrincipal' ? roundMoney(principal * monthlyRate / periods) : 0,
-    totalInterest,
-    totalPayment,
+    payable: balance === 0,
+    principalBeforePrepayment: fromCents(currentPrincipal),
+    prepayment: fromCents(prepayment),
+    principalAfterPrepayment: fromCents(currentPrincipal - prepayment),
+    balance: fromCents(balance),
+    totalInterest: fromCents(totalInterest),
+    months: balance === 0 ? months : Infinity,
+    payoffDate: balance === 0 && payoffDate ? formatDate(payoffDate) : null,
     schedule,
   }
 }
 
-function annuitySchedule(principal, rate, periods) {
-  const payment = roundMoney(rate === 0
-    ? principal / periods
-    : principal * rate * (1 + rate) ** periods / ((1 + rate) ** periods - 1))
-  let remaining = principal
-  return Array.from({ length: periods }, (_, index) => {
-    const interest = rate === 0 ? 0 : roundMoney(remaining * rate)
-    const principalPaid = index === periods - 1 ? remaining : roundMoney(payment - interest)
-    remaining = index === periods - 1 ? 0 : roundMoney(Math.max(0, remaining - principalPaid))
-    return makeRow(index + 1, roundMoney(principalPaid + interest), principalPaid, interest, remaining)
-  })
+/**
+ * 比较“仅按当前最低还款额”与“现在提前还一笔后仍按该金额还款”两种规划。
+ * 当前余额已经包含所有历史还款影响，因此不会再次扣除 2026 年的 10 万元。
+ */
+export function simulatePrepayment({ currentPrincipal, prepaymentAmount, annualRate, currentMinimumPayment, officialRemainingMonths, startDate }) {
+  assertPositiveInteger(officialRemainingMonths, '官方剩余期数')
+  const common = {
+    principal: currentPrincipal,
+    annualRate,
+    monthlyPayment: currentMinimumPayment,
+    startDate,
+  }
+  const baseline = projectLoan(common)
+  const afterPrepayment = projectLoan({ ...common, extraPrincipal: prepaymentAmount })
+  const comparable = baseline.payable && afterPrepayment.payable
+  const plannedRemainingMonths = afterPrepayment.prepayment === 0
+    ? officialRemainingMonths
+    : afterPrepayment.months
+  const estimatedMonthsSaved = afterPrepayment.payable
+    ? Math.max(0, officialRemainingMonths - plannedRemainingMonths)
+    : null
+  const projectionStartDate = parseLocalDate(startDate)
+  const officialPayoffDate = projectionStartDate ? addMonthsClamped(projectionStartDate, officialRemainingMonths) : null
+
+  return {
+    principalBeforePrepayment: afterPrepayment.principalBeforePrepayment,
+    appliedPrepayment: afterPrepayment.prepayment,
+    principalAfterPrepayment: afterPrepayment.principalAfterPrepayment,
+    estimatedInterestBefore: baseline.totalInterest,
+    estimatedInterestAfter: afterPrepayment.totalInterest,
+    estimatedInterestSaved: comparable ? fromCents(Math.max(0, toCents(baseline.totalInterest) - toCents(afterPrepayment.totalInterest))) : null,
+    officialRemainingMonths,
+    estimatedMonthsBefore: officialRemainingMonths,
+    estimatedMonthsAfter: plannedRemainingMonths,
+    estimatedMonthsSaved,
+    estimatedPayoffDateBefore: officialPayoffDate ? formatDate(officialPayoffDate) : null,
+    estimatedPayoffDateAfter: afterPrepayment.payoffDate,
+    payable: afterPrepayment.payable,
+  }
 }
 
-function equalPrincipalSchedule(principal, rate, periods) {
-  const regularPrincipal = principal / periods
-  let remaining = principal
-  return Array.from({ length: periods }, (_, index) => {
-    const nextRemaining = index === periods - 1 ? 0 : roundMoney(principal - regularPrincipal * (index + 1))
-    const principalPaid = roundMoney(remaining - nextRemaining)
-    const interest = roundMoney(remaining * rate)
-    remaining = nextRemaining
-    return makeRow(index + 1, roundMoney(principalPaid + interest), principalPaid, interest, remaining)
-  })
+export function suggestedPrepayment(savings, reserve) {
+  return fromCents(Math.max(0, toCents(savings) - toCents(reserve)))
 }
 
-function makeRow(period, payment, principal, interest, remaining) {
-  return { period, payment, principal, interest, remaining }
+export function monthlyCashFlow({ salary, housingFund, otherIncome, livingExpenses, otherExpenses, minimumPayment }) {
+  const income = toCents(salary) + toCents(housingFund) + toCents(otherIncome)
+  const expenses = toCents(livingExpenses) + toCents(otherExpenses) + toCents(minimumPayment)
+  return fromCents(income - expenses)
 }
 
-function roundMoney(value) {
-  return Math.round((value + Number.EPSILON) * 100) / 100
+export function monthsUntilReserve(savings, reserve, monthlySurplus) {
+  const gap = toCents(reserve) - toCents(savings)
+  if (gap <= 0) return 0
+  const surplus = Math.round(Number(monthlySurplus) * 100)
+  return surplus > 0 ? Math.ceil(gap / surplus) : Infinity
+}
+
+function parseLocalDate(value) {
+  if (value === undefined || value === null || value === '') return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return null
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null
+}
+
+function addMonthsClamped(date, months) {
+  const result = new Date(date)
+  const desiredDay = result.getDate()
+  result.setDate(1)
+  result.setMonth(result.getMonth() + months)
+  const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate()
+  result.setDate(Math.min(desiredDay, lastDay))
+  return result
+}
+
+function formatDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function assertNonNegativeMoney(value, label) {
+  assertNonNegativeNumber(value, label)
+}
+
+function assertNonNegativeNumber(value, label) {
+  if (typeof value === 'string' && value.trim() === '') throw new TypeError(`${label}必须是非负数`)
+  const number = Number(value)
+  if (!Number.isFinite(number) || number < 0) throw new TypeError(`${label}必须是非负数`)
+}
+
+function assertPositiveInteger(value, label) {
+  const number = Number(value)
+  if (!Number.isInteger(number) || number <= 0) throw new TypeError(`${label}必须是正整数`)
 }

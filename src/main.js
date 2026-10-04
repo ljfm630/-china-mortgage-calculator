@@ -1,143 +1,182 @@
-import { calculateMortgage } from './mortgage.js'
+import { LOAN_CONTEXT, simulatePrepayment, suggestedPrepayment } from './mortgage.js'
+import { renderSimulationResult } from './simulation-view.js'
 
-const state = {
-  housePrice: 155,
-  downPayment: 40,
-  loanType: 'fund',
-  annualRate: 2.85,
-  years: 30,
-  method: 'annuity',
-  page: 1,
+const STORAGE_KEY = 'gjj-prepayment-planner-v2'
+const DEFAULTS = {
+  currentBalance: 1_012_206.88,
+  minimumPayment: 4_256.67,
+  savings: 80_000,
+  prepaymentAmount: 30_000,
 }
-const PAGE_SIZE = 12
 
-document.querySelector('#app').innerHTML = `
-  <header class="hero">
-    <div class="hero-inner">
-      <div class="brand"><span class="brand-mark">¥</span><span>安居算</span></div>
-      <h1>房贷计算器</h1>
-      <p>清楚算好每一笔，安心规划理想家</p>
-    </div>
-  </header>
-  <main>
-    <section class="card form-card" aria-labelledby="loan-heading">
-      <div class="section-title"><span>01</span><h2 id="loan-heading">房屋与贷款</h2></div>
-      <div class="field-grid">
-        <label class="field">房屋总价<div class="input-wrap"><input id="housePrice" type="number" min="0" step="1" inputmode="decimal" value="155"><span>万元</span></div></label>
-        <label class="field">首付金额<div class="input-wrap"><input id="downPayment" type="number" min="0" step="1" inputmode="decimal" value="40"><span>万元</span></div></label>
-      </div>
-      <div class="loan-summary">
-        <div><span>贷款金额</span><strong id="loanAmount">¥1,150,000</strong></div>
-        <div><span>首付比例</span><strong id="downRatio">25.8%</strong></div>
-      </div>
-      <label class="group-label">贷款类型</label>
-      <div class="segmented" data-control="loanType">
-        <button data-value="commercial">商业贷款</button><button class="active" data-value="fund">公积金贷款</button>
-      </div>
-      <label class="group-label">贷款期限</label>
-      <div class="year-options" data-control="years">
-        ${[10, 15, 20, 25, 30].map((year) => `<button class="${year === 30 ? 'active' : ''}" data-value="${year}">${year}年</button>`).join('')}
-      </div>
-      <label class="field rate-field">年利率<div class="input-wrap"><input id="annualRate" type="number" min="0" step="0.01" inputmode="decimal" value="2.85"><span>%</span></div><small>利率可按实际贷款情况修改</small></label>
-    </section>
-
-    <section class="card result-card" aria-labelledby="result-heading">
-      <div class="section-title"><span>02</span><h2 id="result-heading">还款结果</h2></div>
-      <div class="segmented method-switch" data-control="method">
-        <button class="active" data-value="annuity">等额本息</button><button data-value="equalPrincipal">等额本金</button>
-      </div>
-      <div class="primary-result"><span id="primaryLabel">每月月供</span><strong id="primaryValue">—</strong><small id="primaryHint">每月还款金额固定</small></div>
-      <div id="secondaryResults" class="secondary-results"></div>
-    </section>
-
-    <section class="card details-card" aria-labelledby="details-heading">
-      <button class="details-toggle" id="detailsToggle" aria-expanded="false">
-        <span><b>03</b><strong id="details-heading">还款明细</strong></span><span class="toggle-meta">共 <i id="totalPeriods">360</i> 期 <em>⌄</em></span>
-      </button>
-      <div id="detailsBody" class="details-body" hidden>
-        <div id="schedule" class="schedule"></div>
-        <nav class="pagination" aria-label="还款明细分页">
-          <button id="prevPage">上一页</button><span id="pageInfo"></span><button id="nextPage">下一页</button>
-        </nav>
-      </div>
-    </section>
-    <p class="disclaimer">计算结果仅供参考，实际还款金额以贷款合同为准</p>
-  </main>
-`
+const stored = loadStoredState()
+const state = { ...DEFAULTS, ...stored }
+// 兼容上一版字段；没有保存过本阶段输入时，默认使用当前可提前还款金额。
+if (stored.prepaymentAmount === undefined) {
+  state.prepaymentAmount = suggestedPrepayment(state.savings, 50_000)
+}
+let prepaymentWasEdited = stored.prepaymentAmount !== undefined
 
 const $ = (selector) => document.querySelector(selector)
-const currency = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', minimumFractionDigits: 2 })
-const compactCurrency = (value) => currency.format(value).replace('CN¥', '¥')
-let currentResult
+const requiredElement = (selector) => {
+  const element = $(selector)
+  if (!element) throw new Error(`页面缺少必需元素：${selector}`)
+  return element
+}
+const money = (value) => `${new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0)} 元`
+const initialSimulation = simulatePrepayment({
+  currentPrincipal: state.currentBalance,
+  prepaymentAmount: state.prepaymentAmount,
+  annualRate: LOAN_CONTEXT.annualRate,
+  currentMinimumPayment: state.minimumPayment,
+  officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
+})
 
-function readNumber(selector) {
-  const value = Number.parseFloat($(selector).value)
-  return Number.isFinite(value) ? Math.max(0, value) : 0
+$('#app').innerHTML = `
+  <header class="page-header">
+    <span class="eyebrow">个人工具</span>
+    <h1>我的公积金还款规划</h1>
+    <p>以国管公积金系统显示的数据为准，做一份简单的个人测算。</p>
+  </header>
+
+  <main>
+    <section class="card" aria-labelledby="loan-title">
+      <div class="section-heading">
+        <span class="section-icon" aria-hidden="true">贷</span>
+        <div><span class="eyebrow">国管公积金系统实际数据</span><h2 id="loan-title">当前贷款</h2></div>
+      </div>
+
+      <div class="input-list">
+        ${moneyInput('currentBalance', '当前贷款余额', '以公积金系统实际显示为准')}
+        ${moneyInput('minimumPayment', '当前最低还款额', '以公积金系统实际显示为准')}
+      </div>
+
+      <dl class="facts">
+        <div><dt>年利率</dt><dd>${LOAN_CONTEXT.annualRate}%</dd></div>
+        <div><dt>放款日期</dt><dd>${LOAN_CONTEXT.loanDate}</dd></div>
+        <div><dt>还款方式</dt><dd>国管公积金${LOAN_CONTEXT.repaymentMethod}</dd></div>
+        <div><dt>原贷款金额</dt><dd>${money(LOAN_CONTEXT.originalPrincipal)}</dd></div>
+        <div><dt>原贷款期限</dt><dd>${LOAN_CONTEXT.originalTermMonths} 期</dd></div>
+        <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">${LOAN_CONTEXT.officialRemainingMonths} 期</dd></div>
+      </dl>
+
+      <div class="loan-records" aria-label="贷款记录和利率记录">
+        <h3>贷款记录 / 利率记录</h3>
+        <div class="record-row"><span>2024-10-17—2025-12-31</span><strong>2.85%</strong></div>
+        <div class="record-row"><span>2026-01-01 起</span><strong>2.60%</strong></div>
+        <div class="record-row"><span>2026 年利率调整后</span><strong>提前还款 ${money(100_000)}</strong></div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="fund-title">
+      <div class="section-heading">
+        <span class="section-icon green-icon" aria-hidden="true">¥</span>
+        <div><span class="eyebrow">现金安排</span><h2 id="fund-title">我的资金</h2></div>
+      </div>
+
+      ${moneyInput('savings', '当前可支配存款')}
+      <div class="reserve-row"><span>安全储备金</span><strong>${money(50_000)}</strong></div>
+      <div class="available-result">
+        <span>可用于提前还款金额</span>
+        <strong id="availableAmount">—</strong>
+        <small>仅使用超过 50,000 元安全储备的部分</small>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="simulation-title">
+      <div class="section-heading">
+        <span class="section-icon" aria-hidden="true">算</span>
+        <div><span class="eyebrow">规划测算结果</span><h2 id="simulation-title">如果现在提前还款</h2></div>
+      </div>
+
+      ${moneyInput('prepaymentAmount', '本次提前还款金额')}
+      <p id="amountWarning" class="field-note" hidden></p>
+
+      <div class="principal-flow" aria-label="提前还款前后本金">
+        <div><span>提前还款前本金</span><strong id="principalBefore">—</strong></div>
+        <span class="flow-arrow" aria-hidden="true">→</span>
+        <div><span>提前还款后本金</span><strong id="principalAfter">—</strong></div>
+      </div>
+      <div class="applied-row"><span>本次提前还款</span><strong id="appliedAmount">—</strong></div>
+      <div class="applied-row"><span>规划测算剩余期数</span><strong id="plannedMonths">${initialSimulation.estimatedMonthsAfter} 期（规划测算）</strong></div>
+
+      <div class="estimate-grid">
+        <div><span>预计节省利息</span><strong id="interestSaved">—</strong></div>
+        <div><span>预计可缩短</span><strong id="monthsSaved">—</strong></div>
+      </div>
+      <p class="assumption">按当前条件规划测算，预计可缩短约 <b id="monthsSavedText">—</b>。测算结果仅用于个人还款规划，实际最低还款额、剩余期限及利息以国管公积金中心后续核定为准。</p>
+    </section>
+  </main>
+
+  <footer>本页面为个人还款规划工具。实际贷款余额、最低还款额、利息及提前还款规则，以国管住房公积金管理中心系统为准。</footer>
+`
+
+function moneyInput(key, label, hint = '') {
+  return `<label class="money-field">
+    <span>${label}</span>
+    <div class="money-input"><input id="${key}" data-key="${key}" type="number" min="0" step="0.01" inputmode="decimal" aria-label="${label}"><b>元</b></div>
+    ${hint ? `<small>${hint}</small>` : ''}
+  </label>`
+}
+
+const simulationElements = {
+  principalBefore: requiredElement('#principalBefore'),
+  appliedAmount: requiredElement('#appliedAmount'),
+  principalAfter: requiredElement('#principalAfter'),
+  plannedMonths: requiredElement('#plannedMonths'),
+  interestSaved: requiredElement('#interestSaved'),
+  monthsSaved: requiredElement('#monthsSaved'),
+  monthsSavedText: requiredElement('#monthsSavedText'),
 }
 
 function render() {
-  state.housePrice = readNumber('#housePrice')
-  state.downPayment = readNumber('#downPayment')
-  state.annualRate = readNumber('#annualRate')
-  const principal = Math.max(0, state.housePrice - state.downPayment) * 10_000
-  const ratio = state.housePrice > 0 ? Math.min(100, state.downPayment / state.housePrice * 100) : 0
-  $('#loanAmount').textContent = compactCurrency(principal).replace('.00', '')
-  $('#downRatio').textContent = `${ratio.toFixed(1)}%`
+  document.querySelectorAll('[data-key]').forEach((input) => {
+    if (document.activeElement !== input) input.value = state[input.dataset.key]
+  })
 
-  currentResult = calculateMortgage({ principal, annualRate: state.annualRate, years: state.years, method: state.method })
-  const isAnnuity = state.method === 'annuity'
-  $('#primaryLabel').textContent = isAnnuity ? '每月月供' : '首月月供'
-  $('#primaryValue').textContent = compactCurrency(isAnnuity ? currentResult.monthlyPayment : currentResult.firstPayment)
-  $('#primaryHint').textContent = isAnnuity ? '每月还款金额固定' : `每月递减 ${compactCurrency(currentResult.monthlyDecrease)}`
+  const available = suggestedPrepayment(state.savings, 50_000)
+  $('#availableAmount').textContent = money(available)
 
-  const common = [
-    ['贷款本金', currentResult.principal],
-    ['总利息', currentResult.totalInterest],
-    ['本息合计', currentResult.totalPayment],
-    ['总期数', `${currentResult.periods} 期`],
-  ]
-  if (!isAnnuity) common.unshift(['末月月供', currentResult.lastPayment])
-  $('#secondaryResults').innerHTML = common.map(([label, value]) => `
-    <div><span>${label}</span><strong>${typeof value === 'number' ? compactCurrency(value) : value}</strong></div>`).join('')
-  $('#totalPeriods').textContent = currentResult.periods
-  renderSchedule()
+  const requested = Math.max(0, state.prepaymentAmount)
+  const result = simulatePrepayment({
+    currentPrincipal: state.currentBalance,
+    prepaymentAmount: requested,
+    annualRate: LOAN_CONTEXT.annualRate,
+    currentMinimumPayment: state.minimumPayment,
+    officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
+  })
+
+  renderSimulationResult(simulationElements, result, money)
+
+  const warning = $('#amountWarning')
+  const aboveAvailable = requested > available
+  const abovePrincipal = requested > state.currentBalance
+  warning.hidden = !aboveAvailable && !abovePrincipal
+  warning.textContent = abovePrincipal
+    ? `输入金额超过当前本金，测算按 ${money(state.currentBalance)} 计算。`
+    : `该金额超过当前可用资金 ${money(available)}，请确认不会动用安全储备。`
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
-function renderSchedule() {
-  const totalPages = Math.ceil(currentResult.periods / PAGE_SIZE)
-  state.page = Math.min(Math.max(1, state.page), totalPages)
-  const start = (state.page - 1) * PAGE_SIZE
-  $('#schedule').innerHTML = currentResult.schedule.slice(start, start + PAGE_SIZE).map((row) => `
-    <article class="schedule-row">
-      <div class="period"><b>${row.period}</b><span>期</span></div>
-      <div class="payment"><span>月供</span><strong>${compactCurrency(row.payment)}</strong></div>
-      <dl><div><dt>本金</dt><dd>${compactCurrency(row.principal)}</dd></div><div><dt>利息</dt><dd>${compactCurrency(row.interest)}</dd></div><div><dt>剩余本金</dt><dd>${compactCurrency(row.remaining)}</dd></div></dl>
-    </article>`).join('')
-  $('#pageInfo').textContent = `${state.page} / ${totalPages}`
-  $('#prevPage').disabled = state.page === 1
-  $('#nextPage').disabled = state.page === totalPages
-}
-
-document.querySelectorAll('input').forEach((input) => input.addEventListener('input', () => { state.page = 1; render() }))
-document.querySelectorAll('[data-control]').forEach((control) => control.addEventListener('click', (event) => {
-  const button = event.target.closest('button')
-  if (!button) return
-  control.querySelectorAll('button').forEach((item) => item.classList.toggle('active', item === button))
-  const key = control.dataset.control
-  state[key] = key === 'years' ? Number(button.dataset.value) : button.dataset.value
-  if (key === 'loanType') {
-    state.annualRate = state.loanType === 'fund' ? 2.85 : 3.1
-    $('#annualRate').value = state.annualRate
+function loadStoredState() {
+  try {
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    return value && typeof value === 'object' ? value : {}
+  } catch {
+    return {}
   }
-  state.page = 1
+}
+
+document.addEventListener('input', (event) => {
+  const key = event.target.dataset.key
+  if (!key) return
+  state[key] = Math.max(0, Number(event.target.value) || 0)
+  if (key === 'prepaymentAmount') prepaymentWasEdited = true
+  if (key === 'savings' && !prepaymentWasEdited) {
+    state.prepaymentAmount = suggestedPrepayment(state.savings, 50_000)
+  }
   render()
-}))
-$('#detailsToggle').addEventListener('click', () => {
-  const expanded = $('#detailsToggle').getAttribute('aria-expanded') === 'true'
-  $('#detailsToggle').setAttribute('aria-expanded', String(!expanded))
-  $('#detailsBody').hidden = expanded
 })
-$('#prevPage').addEventListener('click', () => { state.page--; renderSchedule(); $('.details-card').scrollIntoView({ behavior: 'smooth' }) })
-$('#nextPage').addEventListener('click', () => { state.page++; renderSchedule(); $('.details-card').scrollIntoView({ behavior: 'smooth' }) })
 
 render()
