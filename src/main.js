@@ -1,21 +1,22 @@
 import { LOAN_CONTEXT, simulatePrepayment, suggestedPrepayment } from './mortgage.js'
 import { renderSimulationResult } from './simulation-view.js'
+import { calculateExtraPrepayment } from './payment-plan.js'
 
-const STORAGE_KEY = 'gjj-prepayment-planner-v2'
+const STORAGE_KEY = 'gjj-prepayment-planner-v3'
 const DEFAULTS = {
   currentBalance: 1_012_206.88,
   minimumPayment: 4_256.67,
   savings: 80_000,
-  prepaymentAmount: 30_000,
+  totalMonthlyPayment: 30_000,
 }
 
 const stored = loadStoredState()
 const state = { ...DEFAULTS, ...stored }
-// 兼容上一版字段；没有保存过本阶段输入时，默认使用当前可提前还款金额。
-if (stored.prepaymentAmount === undefined) {
-  state.prepaymentAmount = suggestedPrepayment(state.savings, 50_000)
+// 新口径：用户输入“本月计划总还款额”，其中已经包含当月最低还款额。
+if (stored.totalMonthlyPayment === undefined) {
+  state.totalMonthlyPayment = suggestedPrepayment(state.savings, 50_000)
 }
-let prepaymentWasEdited = stored.prepaymentAmount !== undefined
+let totalPaymentWasEdited = stored.totalMonthlyPayment !== undefined
 
 const $ = (selector) => document.querySelector(selector)
 const requiredElement = (selector) => {
@@ -26,7 +27,7 @@ const requiredElement = (selector) => {
 const money = (value) => `${new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0)} 元`
 const initialSimulation = simulatePrepayment({
   currentPrincipal: state.currentBalance,
-  prepaymentAmount: state.prepaymentAmount,
+  prepaymentAmount: calculateExtraPrepayment(state.totalMonthlyPayment, state.minimumPayment),
   annualRate: LOAN_CONTEXT.annualRate,
   currentMinimumPayment: state.minimumPayment,
   officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
@@ -89,15 +90,19 @@ $('#app').innerHTML = `
         <div><span class="eyebrow">规划测算结果</span><h2 id="simulation-title">如果现在提前还款</h2></div>
       </div>
 
-      ${moneyInput('prepaymentAmount', '本次提前还款金额')}
+      ${moneyInput('totalMonthlyPayment', '本月计划总还款额')}
       <p id="amountWarning" class="field-note" hidden></p>
+
+      <div class="applied-row"><span>本月计划总还款额</span><strong id="totalMonthlyPaymentDisplay">—</strong></div>
+      <div class="applied-row"><span>当月最低还款额</span><strong id="minimumPaymentDisplay">—</strong></div>
+      <div class="applied-row"><span>额外提前还款</span><strong id="extraPrepaymentDisplay">—</strong></div>
 
       <div class="principal-flow" aria-label="提前还款前后本金">
         <div><span>提前还款前本金</span><strong id="principalBefore">—</strong></div>
         <span class="flow-arrow" aria-hidden="true">→</span>
         <div><span>提前还款后本金</span><strong id="principalAfter">—</strong></div>
       </div>
-      <div class="applied-row"><span>本次提前还款</span><strong id="appliedAmount">—</strong></div>
+      <div class="applied-row"><span>实际额外提前还款</span><strong id="appliedAmount">—</strong></div>
       <div class="applied-row"><span>规划测算剩余期数</span><strong id="plannedMonths">${initialSimulation.estimatedMonthsAfter} 期（规划测算）</strong></div>
 
       <div class="estimate-grid">
@@ -137,10 +142,15 @@ function render() {
   const available = suggestedPrepayment(state.savings, 50_000)
   $('#availableAmount').textContent = money(available)
 
-  const requested = Math.max(0, state.prepaymentAmount)
+  const totalMonthlyPayment = Math.max(0, state.totalMonthlyPayment)
+  const extraPrepayment = calculateExtraPrepayment(totalMonthlyPayment, state.minimumPayment)
+  $('#totalMonthlyPaymentDisplay').textContent = money(totalMonthlyPayment)
+  $('#minimumPaymentDisplay').textContent = money(state.minimumPayment)
+  $('#extraPrepaymentDisplay').textContent = money(extraPrepayment)
+
   const result = simulatePrepayment({
     currentPrincipal: state.currentBalance,
-    prepaymentAmount: requested,
+    prepaymentAmount: extraPrepayment,
     annualRate: LOAN_CONTEXT.annualRate,
     currentMinimumPayment: state.minimumPayment,
     officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
@@ -149,12 +159,15 @@ function render() {
   renderSimulationResult(simulationElements, result, money)
 
   const warning = $('#amountWarning')
-  const aboveAvailable = requested > available
-  const abovePrincipal = requested > state.currentBalance
-  warning.hidden = !aboveAvailable && !abovePrincipal
-  warning.textContent = abovePrincipal
-    ? `输入金额超过当前本金，测算按 ${money(state.currentBalance)} 计算。`
-    : `该金额超过当前可用资金 ${money(available)}，请确认不会动用安全储备。`
+  const belowMinimum = totalMonthlyPayment < state.minimumPayment
+  const aboveAvailable = extraPrepayment > available
+  const abovePrincipal = extraPrepayment > state.currentBalance
+  warning.hidden = !belowMinimum && !aboveAvailable && !abovePrincipal
+  warning.textContent = belowMinimum
+    ? '本月计划总还款额低于当前最低还款额，请至少按系统最低还款额还款。'
+    : abovePrincipal
+      ? `额外提前还款超过当前本金，测算按 ${money(state.currentBalance)} 计算。`
+      : `额外提前还款超过当前可用资金 ${money(available)}，请确认不会动用安全储备。`
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
@@ -172,9 +185,9 @@ document.addEventListener('input', (event) => {
   const key = event.target.dataset.key
   if (!key) return
   state[key] = Math.max(0, Number(event.target.value) || 0)
-  if (key === 'prepaymentAmount') prepaymentWasEdited = true
-  if (key === 'savings' && !prepaymentWasEdited) {
-    state.prepaymentAmount = suggestedPrepayment(state.savings, 50_000)
+  if (key === 'totalMonthlyPayment') totalPaymentWasEdited = true
+  if (key === 'savings' && !totalPaymentWasEdited) {
+    state.totalMonthlyPayment = suggestedPrepayment(state.savings, 50_000)
   }
   render()
 })
