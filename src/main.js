@@ -163,8 +163,17 @@ $('#app').innerHTML = `
         <div><span>叠加计划后预计剩余</span><strong id="futurePlannedMonths">—</strong></div>
         <div><span>预计累计缩短</span><strong id="futureMonthsSaved">—</strong></div>
         <div><span>预计累计节省利息</span><strong id="futureInterestSaved">—</strong></div>
+        <div><span>预计结清</span><strong id="futurePayoffDate">—</strong></div>
       </div>
+      <div class="future-actions"><button id="clearFuturePlan" class="secondary-button" type="button">清空未来计划</button></div>
       <p class="history-local-note">本月金额自动接续上方规划；未来月份可逐笔添加、删除并即时重算。</p>
+    </section>
+
+    <section class="card utility-card" aria-labelledby="data-title">
+      <div class="section-heading"><span class="section-icon" aria-hidden="true">存</span><div><span class="eyebrow">长期使用</span><h2 id="data-title">数据备份</h2></div></div>
+      <p class="utility-copy">把当前贷款数据和未来计划保存下来，换手机或清理浏览器后也能恢复。</p>
+      <div class="utility-actions"><button id="exportData" class="secondary-button" type="button">导出数据</button><button id="importData" class="secondary-button" type="button">导入数据</button><input id="importDataFile" type="file" accept="application/json,.json" hidden></div>
+      <p id="dataHint" class="field-note" hidden></p>
     </section>
   </main>
 
@@ -296,7 +305,34 @@ function renderFuturePlan() {
   $('#futurePlannedMonths').textContent = result.payable ? `${result.estimatedMonthsAfter} 期` : '待完善'
   $('#futureMonthsSaved').textContent = result.payable ? `${result.estimatedMonthsSaved} 个月` : '待完善'
   $('#futureInterestSaved').textContent = result.payable ? money(result.estimatedInterestSaved) : '待完善'
+  const payoffDate = result.payable ? addMonthsToDate(new Date(), result.estimatedMonthsAfter) : null
+  $('#futurePayoffDate').textContent = payoffDate ? formatMonth(payoffDate) : '待完善'
 }
+
+function exportData() {
+  const payload = { version: 1, exportedAt: new Date().toISOString(), state, futurePlanEntries }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = '我的公积金还款规划-备份.json'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+  const hint = $('#dataHint')
+  hint.hidden = false
+  hint.textContent = '备份文件已导出。'
+}
+
+function addMonthsToDate(date, months) {
+  const result = new Date(date)
+  result.setDate(1)
+  result.setMonth(result.getMonth() + Math.max(0, Number(months) || 0))
+  return result
+}
+
+function formatMonth(date) { return `${date.getFullYear()}年${date.getMonth() + 1}月` }
 
 function saveFuturePlan() {
   localStorage.setItem(FUTURE_PLAN_STORAGE_KEY, JSON.stringify(futurePlanEntries))
@@ -343,7 +379,43 @@ document.addEventListener('input', (event) => {
   render()
 })
 
+document.addEventListener('change', (event) => {
+  if (event.target.id !== 'importDataFile') return
+  const file = event.target.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    const hint = $('#dataHint')
+    try {
+      const payload = JSON.parse(String(reader.result))
+      if (!payload || payload.version !== 1 || typeof payload.state !== 'object' || !Array.isArray(payload.futurePlanEntries)) throw new Error('备份文件格式不正确。')
+      const importedState = { ...DEFAULTS, ...payload.state }
+      for (const key of ['currentBalance', 'minimumPayment', 'savings', 'totalMonthlyPayment']) if (!Number.isFinite(Number(importedState[key])) || Number(importedState[key]) < 0) throw new Error('备份文件中的贷款数据无效。')
+      futurePlanEntries = payload.futurePlanEntries.filter((entry) => /^\d{4}-\d{2}$/.test(entry.month) && Number.isFinite(Number(entry.totalPayment))).map((entry) => ({ month: entry.month, totalPayment: Number(entry.totalPayment) }))
+      Object.assign(state, importedState)
+      totalPaymentWasEdited = true
+      saveFuturePlan()
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      hint.hidden = false
+      hint.textContent = '数据已恢复。'
+      render()
+    } catch (error) { hint.hidden = false; hint.textContent = error.message || '导入失败。' }
+    finally { event.target.value = '' }
+  }
+  reader.readAsText(file)
+})
+
 document.addEventListener('click', (event) => {
+  if (event.target.id === 'clearFuturePlan') {
+    futurePlanEntries = []
+    saveFuturePlan()
+    $('#futurePlanHint').hidden = false
+    $('#futurePlanHint').textContent = '未来计划已清空。'
+    renderFuturePlan()
+    return
+  }
+  if (event.target.id === 'exportData') { exportData(); return }
+  if (event.target.id === 'importData') { $('#importDataFile').click(); return }
   if (event.target.id === 'addFuturePlan') {
     const month = $('#futurePlanMonth').value
     const totalPayment = Number($('#futurePlanTotal').value)
