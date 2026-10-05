@@ -105,10 +105,7 @@ $('#app').innerHTML = `
           <div><dt>原贷款金额</dt><dd>${money(loanProfile.originalPrincipal)}</dd></div>
           <div><dt>原贷款期限</dt><dd>${loanProfile.originalTermMonths} 期</dd></div>
         </dl>
-        <div class="loan-records" aria-label="利率记录">
-          <div class="record-row"><span>2024-10-17—2025-12-31</span><strong>2.85%</strong></div>
-          <div class="record-row"><span>2026-01-01 起</span><strong>2.60%</strong></div>
-        </div>
+
       </details>
     </section>
 
