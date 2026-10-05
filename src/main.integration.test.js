@@ -90,13 +90,11 @@ test('main.js 完整初始化后将官方期数和规划结果写入最终页面
   assert.equal(elements.get('amountWarning').hidden, false)
   assert.match(elements.get('amountWarning').textContent, /低于当前最低还款额/)
 
-  assert.ok(listeners.has('click'), '应注册点击事件以保存还款记录')
-  elements.get('repaymentRecordDate').value = '2026-10-05'
-  elements.get('repaymentRecordTotal').value = 30_000
-  elements.get('repaymentRecordBalance').value = 986_463.55
-  listeners.get('click')({ target: elements.get('saveRepaymentRecord') })
-  assert.match(elements.get('repaymentHistoryList').innerHTML, /2026-10-05/)
-  assert.match(elements.get('repaymentHistoryList').innerHTML, /25,743\.33 元/)
-  assert.match(elements.get('repaymentHistoryList').innerHTML, /986,463\.55 元/)
-  assert.match(stored.get('gjj-repayment-history-v1'), /2026-10-05/)
+  assert.ok(listeners.has('click'), '应注册点击事件以维护未来计划')
+  elements.get('futurePlanMonth').value = '2026-11'
+  elements.get('futurePlanTotal').value = 20_000
+  listeners.get('click')({ target: elements.get('addFuturePlan') })
+  assert.match(elements.get('futurePlanList').innerHTML, /2026-11/)
+  assert.match(elements.get('futurePlanList').innerHTML, /15,743\.33 元/)
+  assert.match(stored.get('gjj-future-payment-plan-v1'), /2026-11/)
 })
