@@ -38,13 +38,13 @@ const requiredElement = (selector) => {
   return element
 }
 const money = (value) => `${new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0)} 元`
-const initialSimulation = simulatePrepayment({
+const initialSimulation = profileReady() ? simulatePrepayment({
   currentPrincipal: state.currentBalance,
   prepaymentAmount: calculateExtraPrepayment(state.totalMonthlyPayment, state.minimumPayment),
   annualRate: loanProfile.annualRate,
   currentMinimumPayment: state.minimumPayment,
   officialRemainingMonths: loanProfile.officialRemainingMonths,
-})
+}) : null
 
 $('#app').innerHTML = `
   <header class="page-header">
@@ -80,8 +80,8 @@ $('#app').innerHTML = `
       </div>
 
       <dl class="facts facts-primary">
-        <div><dt>当前年利率</dt><dd>${loanProfile.annualRate}%</dd></div>
-        <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">${loanProfile.officialRemainingMonths} 期</dd></div>
+        <div><dt>当前年利率</dt><dd id="annualRateDisplay">—</dd></div>
+        <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">—</dd></div>
       </dl>
 
       <div class="repayment-progress" aria-label="本金偿还进度">
@@ -98,12 +98,12 @@ $('#app').innerHTML = `
       </div>
 
       <details class="loan-details">
-        <summary>贷款详情与利率记录</summary>
+        <summary>贷款详情</summary>
         <dl class="facts facts-secondary">
-          <div><dt>放款日期</dt><dd>${loanProfile.loanDate}</dd></div>
-          <div><dt>还款方式</dt><dd>国管公积金${loanProfile.repaymentMethod}</dd></div>
-          <div><dt>原贷款金额</dt><dd>${money(loanProfile.originalPrincipal)}</dd></div>
-          <div><dt>原贷款期限</dt><dd>${loanProfile.originalTermMonths} 期</dd></div>
+          <div><dt>放款日期</dt><dd id="loanDateDisplay">—</dd></div>
+          <div><dt>还款方式</dt><dd id="repaymentMethodDisplay">—</dd></div>
+          <div><dt>原贷款金额</dt><dd id="originalPrincipalDisplay">—</dd></div>
+          <div><dt>原贷款期限</dt><dd id="originalTermDisplay">—</dd></div>
         </dl>
 
       </details>
@@ -286,6 +286,7 @@ function render() {
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   renderFuturePlan()
+  renderProfile()
 }
 
 function renderFuturePlan() {
