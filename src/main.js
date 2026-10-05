@@ -43,7 +43,7 @@ const initialSimulation = simulatePrepayment({
   prepaymentAmount: calculateExtraPrepayment(state.totalMonthlyPayment, state.minimumPayment),
   annualRate: loanProfile.annualRate,
   currentMinimumPayment: state.minimumPayment,
-  officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
+  officialRemainingMonths: loanProfile.officialRemainingMonths,
 })
 
 $('#app').innerHTML = `
@@ -80,8 +80,8 @@ $('#app').innerHTML = `
       </div>
 
       <dl class="facts facts-primary">
-        <div><dt>当前年利率</dt><dd>${LOAN_CONTEXT.annualRate}%</dd></div>
-        <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">${LOAN_CONTEXT.officialRemainingMonths} 期</dd></div>
+        <div><dt>当前年利率</dt><dd>${loanProfile.annualRate}%</dd></div>
+        <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">${loanProfile.officialRemainingMonths} 期</dd></div>
       </dl>
 
       <div class="repayment-progress" aria-label="本金偿还进度">
@@ -100,10 +100,10 @@ $('#app').innerHTML = `
       <details class="loan-details">
         <summary>贷款详情与利率记录</summary>
         <dl class="facts facts-secondary">
-          <div><dt>放款日期</dt><dd>${LOAN_CONTEXT.loanDate}</dd></div>
-          <div><dt>还款方式</dt><dd>国管公积金${LOAN_CONTEXT.repaymentMethod}</dd></div>
-          <div><dt>原贷款金额</dt><dd>${money(LOAN_CONTEXT.originalPrincipal)}</dd></div>
-          <div><dt>原贷款期限</dt><dd>${LOAN_CONTEXT.originalTermMonths} 期</dd></div>
+          <div><dt>放款日期</dt><dd>${loanProfile.loanDate}</dd></div>
+          <div><dt>还款方式</dt><dd>国管公积金${loanProfile.repaymentMethod}</dd></div>
+          <div><dt>原贷款金额</dt><dd>${money(loanProfile.originalPrincipal)}</dd></div>
+          <div><dt>原贷款期限</dt><dd>${loanProfile.originalTermMonths} 期</dd></div>
         </dl>
         <div class="loan-records" aria-label="利率记录">
           <div class="record-row"><span>2024-10-17—2025-12-31</span><strong>2.85%</strong></div>
@@ -143,7 +143,7 @@ $('#app').innerHTML = `
       <strong id="totalMonthlyPaymentDisplay" class="sr-only">—</strong>
 
       <div class="result-grid">
-        <div><span>预计剩余</span><strong id="plannedMonths">${initialSimulation.estimatedMonthsAfter} 期（规划测算）</strong></div>
+        <div><span>预计剩余</span><strong id="plannedMonths">${initialSimulation ? initialSimulation.estimatedMonthsAfter + ' 期（规划测算）' : '待设置'}</strong></div>
         <div><span>预计缩短</span><strong id="monthsSaved">—</strong></div>
         <div><span>预计节省利息</span><strong id="interestSaved">—</strong></div>
       </div>
@@ -245,7 +245,7 @@ function render() {
     if (document.activeElement !== input) input.value = state[input.dataset.key]
   })
 
-  const originalPrincipal = LOAN_CONTEXT.originalPrincipal
+  const originalPrincipal = loanProfile.originalPrincipal
   const repaidPrincipal = Math.max(0, originalPrincipal - state.currentBalance)
   const progressPercent = originalPrincipal > 0
     ? Math.min(100, Math.max(0, repaidPrincipal / originalPrincipal * 100))
@@ -269,9 +269,9 @@ function render() {
   const result = simulatePrepayment({
     currentPrincipal: state.currentBalance,
     prepaymentAmount: extraPrepayment,
-    annualRate: LOAN_CONTEXT.annualRate,
+    annualRate: loanProfile.annualRate,
     currentMinimumPayment: state.minimumPayment,
-    officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
+    officialRemainingMonths: loanProfile.officialRemainingMonths,
   })
 
   renderSimulationResult(simulationElements, result, money)
@@ -305,9 +305,9 @@ function renderFuturePlan() {
     if (!profileReady()) { $('#futurePlanHint').hidden = false; $('#futurePlanHint').textContent = '请先填写上方“我的贷款参数”。'; return }
     result = simulateFuturePlan({
       currentPrincipal: state.currentBalance,
-      annualRate: LOAN_CONTEXT.annualRate,
+      annualRate: loanProfile.annualRate,
       currentMinimumPayment: state.minimumPayment,
-      officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
+      officialRemainingMonths: loanProfile.officialRemainingMonths,
       startMonth: currentMonth,
       entries,
     })
