@@ -1,16 +1,26 @@
-import { LOAN_CONTEXT, simulatePrepayment, suggestedPrepayment } from './mortgage.js'
+import { simulatePrepayment, suggestedPrepayment } from './mortgage.js'
 import { renderSimulationResult } from './simulation-view.js'
 import { calculateExtraPrepayment } from './payment-plan.js'
 import { simulateFuturePlan } from './future-plan.js'
 
 const STORAGE_KEY = 'gjj-prepayment-planner-v3'
+const PROFILE_STORAGE_KEY = 'gjj-loan-profile-v1'
 const FUTURE_PLAN_STORAGE_KEY = 'gjj-future-payment-plan-v1'
 const DEFAULTS = {
-  currentBalance: 1_012_206.88,
-  minimumPayment: 4_256.67,
-  savings: 80_000,
-  totalMonthlyPayment: 30_000,
+  currentBalance: 0,
+  minimumPayment: 0,
+  savings: 0,
+  totalMonthlyPayment: 0,
 }
+const PROFILE_DEFAULTS = {
+  originalPrincipal: 0,
+  annualRate: 0,
+  officialRemainingMonths: 0,
+  loanDate: '',
+  repaymentMethod: '',
+  originalTermMonths: 0,
+}
+const loanProfile = { ...PROFILE_DEFAULTS, ...loadLoanProfile() }
 
 const stored = loadStoredState()
 const state = { ...DEFAULTS, ...stored }
@@ -31,7 +41,7 @@ const money = (value) => `${new Intl.NumberFormat('zh-CN', { maximumFractionDigi
 const initialSimulation = simulatePrepayment({
   currentPrincipal: state.currentBalance,
   prepaymentAmount: calculateExtraPrepayment(state.totalMonthlyPayment, state.minimumPayment),
-  annualRate: LOAN_CONTEXT.annualRate,
+  annualRate: loanProfile.annualRate,
   currentMinimumPayment: state.minimumPayment,
   officialRemainingMonths: LOAN_CONTEXT.officialRemainingMonths,
 })
@@ -44,6 +54,20 @@ $('#app').innerHTML = `
   </header>
 
   <main>
+    <section class="card profile-card" aria-labelledby="profile-title">
+      <div class="section-heading"><span class="section-icon" aria-hidden="true">设</span><div><span class="eyebrow">仅保存在本设备</span><h2 id="profile-title">我的贷款参数</h2></div></div>
+      <p class="utility-copy">这些参数不写入网页代码，只保存在你当前设备的浏览器中。第一次使用时填写一次即可。</p>
+      <div class="profile-grid">
+        ${profileInput('profileOriginalPrincipal', '原贷款金额', 'originalPrincipal', 'number')}
+        ${profileInput('profileAnnualRate', '当前年利率', 'annualRate', 'number')}
+        ${profileInput('profileOfficialRemainingMonths', '官方剩余期数', 'officialRemainingMonths', 'number')}
+        ${profileInput('profileLoanDate', '放款日期', 'loanDate', 'date')}
+        ${profileInput('profileRepaymentMethod', '还款方式', 'repaymentMethod', 'text')}
+        ${profileInput('profileOriginalTermMonths', '原贷款期限（月）', 'originalTermMonths', 'number')}
+      </div>
+      <p id="profileHint" class="field-note" hidden></p>
+    </section>
+
     <section class="card" aria-labelledby="loan-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">贷</span>
@@ -195,6 +219,11 @@ function plainMoneyInput(id, label) {
   </label>`
 }
 
+function profileInput(id, label, key, type) {
+  const suffix = key === 'annualRate' ? '%' : (key === 'originalPrincipal' ? '元' : (key === 'originalTermMonths' || key === 'officialRemainingMonths' ? '月' : ''))
+  return '<label class="money-field profile-field"><span>'+label+'</span><div class="money-input"><input id="'+id+'" data-profile-key="'+key+'" type="'+type+'" min="0" step="0.01" inputmode="decimal" aria-label="'+label+'"><b>'+suffix+'</b></div></label>'
+}
+
 const simulationElements = {
   principalBefore: requiredElement('#principalBefore'),
   appliedAmount: requiredElement('#appliedAmount'),
@@ -207,6 +236,7 @@ const simulationElements = {
 
 requiredElement('#futurePlanMonth').value = nextMonthValue()
 requiredElement('#futurePlanTotal').value = state.totalMonthlyPayment
+renderProfile()
 renderFuturePlan()
 
 
@@ -233,6 +263,8 @@ function render() {
   $('#totalMonthlyPaymentDisplay').textContent = money(totalMonthlyPayment)
   $('#minimumPaymentDisplay').textContent = money(state.minimumPayment)
   $('#extraPrepaymentDisplay').textContent = money(extraPrepayment)
+
+  if (!profileReady()) { setCalculationUnavailable(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); renderFuturePlan(); renderProfile(); return }
 
   const result = simulatePrepayment({
     currentPrincipal: state.currentBalance,
@@ -270,6 +302,7 @@ function renderFuturePlan() {
 
   let result
   try {
+    if (!profileReady()) { $('#futurePlanHint').hidden = false; $('#futurePlanHint').textContent = '请先填写上方“我的贷款参数”。'; return }
     result = simulateFuturePlan({
       currentPrincipal: state.currentBalance,
       annualRate: LOAN_CONTEXT.annualRate,
@@ -310,7 +343,7 @@ function renderFuturePlan() {
 }
 
 function exportData() {
-  const payload = { version: 1, exportedAt: new Date().toISOString(), state, futurePlanEntries }
+  const payload = { version: 2, exportedAt: new Date().toISOString(), loanProfile, state, futurePlanEntries }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -359,6 +392,20 @@ function nextMonthValue() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
+function loadLoanProfile() { try { const value = JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY)); return value && typeof value === 'object' ? value : {} } catch { return {} } }
+function saveLoanProfile() { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(loanProfile)) }
+function profileReady() { return Number(loanProfile.originalPrincipal) > 0 && Number(loanProfile.annualRate) > 0 && Number(loanProfile.officialRemainingMonths) > 0 }
+function renderProfile() {
+  document.querySelectorAll('[data-profile-key]').forEach((input) => { if (document.activeElement !== input) input.value = loanProfile[input.dataset.profileKey] ?? '' })
+  $('#annualRateDisplay').textContent = profileReady() ? loanProfile.annualRate+'%' : '未设置'
+  $('#officialRemainingMonths').textContent = profileReady() ? loanProfile.officialRemainingMonths+' 期' : '未设置'
+  $('#loanDateDisplay').textContent = loanProfile.loanDate || '未设置'
+  $('#repaymentMethodDisplay').textContent = loanProfile.repaymentMethod || '未设置'
+  $('#originalPrincipalDisplay').textContent = Number(loanProfile.originalPrincipal) > 0 ? money(Number(loanProfile.originalPrincipal)) : '未设置'
+  $('#originalTermDisplay').textContent = Number(loanProfile.originalTermMonths) > 0 ? loanProfile.originalTermMonths+' 期' : '未设置'
+  const hint=$('#profileHint'); hint.hidden=profileReady(); if(!profileReady()) hint.textContent='请填写原贷款金额、当前年利率和官方剩余期数后开始测算。'
+}
+function setCalculationUnavailable() { simulationElements.plannedMonths.textContent='待设置'; simulationElements.monthsSaved.textContent='—'; simulationElements.interestSaved.textContent='—'; simulationElements.principalBefore.textContent='—'; simulationElements.appliedAmount.textContent='—'; simulationElements.principalAfter.textContent='—' }
 function loadStoredState() {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY))
@@ -369,6 +416,8 @@ function loadStoredState() {
 }
 
 document.addEventListener('input', (event) => {
+  const profileKey=event.target.dataset.profileKey
+  if(profileKey){ loanProfile[profileKey]=event.target.type==='number'?Math.max(0,Number(event.target.value)||0):event.target.value; saveLoanProfile(); render(); return }
   const key = event.target.dataset.key
   if (!key) return
   state[key] = Math.max(0, Number(event.target.value) || 0)
@@ -388,8 +437,9 @@ document.addEventListener('change', (event) => {
     const hint = $('#dataHint')
     try {
       const payload = JSON.parse(String(reader.result))
-      if (!payload || payload.version !== 1 || typeof payload.state !== 'object' || !Array.isArray(payload.futurePlanEntries)) throw new Error('备份文件格式不正确。')
+      if (!payload || ![1,2].includes(payload.version) || typeof payload.state !== 'object' || !Array.isArray(payload.futurePlanEntries)) throw new Error('备份文件格式不正确。')
       const importedState = { ...DEFAULTS, ...payload.state }
+      if(payload.version>=2 && payload.loanProfile && typeof payload.loanProfile==='object') Object.assign(loanProfile,{...PROFILE_DEFAULTS,...payload.loanProfile})
       for (const key of ['currentBalance', 'minimumPayment', 'savings', 'totalMonthlyPayment']) if (!Number.isFinite(Number(importedState[key])) || Number(importedState[key]) < 0) throw new Error('备份文件中的贷款数据无效。')
       futurePlanEntries = payload.futurePlanEntries.filter((entry) => /^\d{4}-\d{2}$/.test(entry.month) && Number.isFinite(Number(entry.totalPayment))).map((entry) => ({ month: entry.month, totalPayment: Number(entry.totalPayment) }))
       Object.assign(state, importedState)
