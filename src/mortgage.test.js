@@ -21,6 +21,24 @@ describe('还款规划核心', () => {
     assert.ok(result.estimatedInterestSaved > 0)
   })
   it('总还款额包含最低还款额', () => assert.equal(calculateExtraPrepayment(20_000, 3_500), 16_500))
+  it('未来单月总还款会先支付利息，只有剩余部分减少本金', () => {
+    const result = simulateFuturePlan({
+      currentPrincipal: 1_012_206.88,
+      annualRate: 2.6,
+      currentMinimumPayment: 4_256.67,
+      officialRemainingMonths: 337,
+      startMonth: '2026-10',
+      entries: [
+        { month: '2026-10', totalPayment: 5_000 },
+      ],
+    })
+    const step = result.steps[0]
+    assert.equal(step.estimatedInterestPayment, 2_193.11)
+    assert.equal(step.extraPrepayment, 743.33)
+    assert.equal(step.principalReduction, 2_806.89)
+    assert.equal(step.endingBalance, 1_009_399.99)
+  })
+
   it('未来计划可连续叠加', () => {
     const result = simulateFuturePlan({
       currentPrincipal: 800_000,
