@@ -16,9 +16,9 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="./src/entry-future-plan.js?v=5"></script>
+    <script type="module" src="./src/entry-future-plan.js?v=6"></script>
     <script>
-      if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"))
+      if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js?v=2", { updateViaCache: "none" }))
     </script>
   </body>
 </html>

@@ -473,6 +473,15 @@ document.addEventListener('input', (event) => {
 })
 
 document.addEventListener('change', (event) => {
+  const profileKey = event.target.dataset?.profileKey
+  if (profileKey) {
+    loanProfile[profileKey] = event.target.type === 'number'
+      ? Math.max(0, Number(event.target.value) || 0)
+      : event.target.value
+    saveLoanProfile()
+    render()
+    return
+  }
   if (event.target.id !== 'importDataFile') return
   const file = event.target.files?.[0]
   if (!file) return
