@@ -75,13 +75,18 @@ h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: -.025em; }
 .estimate-grid div:first-child strong { color: #1d6b42; }
 .assumption { margin: 11px 1px 0; color: #98989d; font-size: 10px; line-height: 1.5; }
 
-.history-form { display: grid; gap: 14px; }
-.history-preview { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; margin-top: 8px; border-bottom: 1px solid #ededf0; }
-.history-preview span { color: #6e6e73; font-size: 11px; }
-.history-preview strong { color: #1d6b42; font-size: 13px; text-align: right; }
+.future-current { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; margin-bottom: 14px; padding: 0 2px; border-bottom: 1px solid #ededf0; }
+.future-current span { color: #6e6e73; font-size: 11px; }
+.future-current strong { color: #1d6b42; font-size: 13px; text-align: right; }
+.future-form { display: grid; gap: 14px; }
+.future-list { display: grid; gap: 10px; margin-top: 18px; }
+.future-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 16px; overflow: hidden; border: 1px solid #e8e8ec; border-radius: 15px; background: #e8e8ec; }
+.future-summary div { min-width: 0; padding: 14px 10px; background: #fff; }
+.future-summary span { display: block; color: #8a8a8f; font-size: 9px; line-height: 1.35; }
+.future-summary strong { display: block; margin-top: 6px; font-size: 12px; overflow-wrap: anywhere; }
+.future-summary div:first-child strong, .future-summary div:last-child strong { color: #1d6b42; }
 .primary-button { width: 100%; min-height: 46px; margin-top: 15px; border: 0; border-radius: 13px; color: #fff; background: #2d754b; font: inherit; font-size: 13px; font-weight: 700; }
 .primary-button:active { transform: translateY(1px); }
-.history-list { display: grid; gap: 10px; margin-top: 18px; }
 .history-empty { padding: 16px; border-radius: 14px; color: #8a8a8f; background: #f7f7f9; font-size: 11px; line-height: 1.55; }
 .history-item { position: relative; padding: 15px; border: 1px solid #ececf0; border-radius: 15px; background: #fafafa; }
 .history-date { margin-bottom: 11px; font-size: 12px; font-weight: 700; }
