@@ -9,16 +9,17 @@
 html { background: #f5f5f7; }
 body { margin: 0; min-width: 320px; overflow-x: hidden; background: #f5f5f7; }
 input { font: inherit; }
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 
 .page-header, main, footer { width: min(100%, 680px); margin-inline: auto; }
-.page-header { padding: max(34px, env(safe-area-inset-top)) 20px 26px; }
+.page-header { padding: max(30px, env(safe-area-inset-top)) 20px 20px; }
 .eyebrow { color: #86868b; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
 h1 { margin: 8px 0 10px; font-size: clamp(30px, 8.5vw, 42px); line-height: 1.12; letter-spacing: -.04em; }
 .page-header p { max-width: 430px; margin: 0; color: #6e6e73; font-size: 13px; line-height: 1.55; }
 
 main { padding: 0 12px; }
-.card { margin-bottom: 13px; padding: 20px 17px; border: 1px solid #e8e8ed; border-radius: 22px; background: #fff; box-shadow: 0 2px 12px rgba(0, 0, 0, .025); }
-.section-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 20px; }
+.card { margin-bottom: 12px; padding: 19px 17px; border: 1px solid #e8e8ed; border-radius: 22px; background: #fff; box-shadow: 0 2px 12px rgba(0, 0, 0, .025); }
+.section-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 17px; }
 .section-icon { display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px; border-radius: 12px; color: #2c2c2e; background: #f0f0f3; font-size: 13px; font-weight: 750; }
 .green-icon { color: #246a45; background: #edf6f0; font-size: 19px; }
 h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: -.025em; }
@@ -49,17 +50,30 @@ h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: -.025em; }
 .progress-stats strong { display: block; margin-top: 4px; font-size: 12px; overflow-wrap: anywhere; }
 .repayment-progress small { display: block; margin-top: 10px; color: #9a9a9f; font-size: 9px; line-height: 1.45; }
 
-.loan-records { margin-top: 13px; padding: 15px; border-radius: 15px; background: #f7f7f9; }
-.loan-records h3 { margin: 0 0 8px; color: #6e6e73; font-size: 11px; letter-spacing: .02em; }
-.record-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; }
-.record-row span { color: #77777c; font-size: 11px; }
-.record-row strong { font-size: 11px; text-align: right; }
+.loan-details, .calculation-details { margin-top: 13px; border-top: 1px solid #ededf0; }
+.loan-details summary, .calculation-details summary { padding: 13px 1px 2px; color: #747479; font-size: 11px; cursor: pointer; }
+.facts-secondary { margin-top: 10px; }
+.loan-records { margin-top: 10px; padding: 11px 13px; border-radius: 13px; background: #f7f7f9; }
+.record-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; }
+.record-row span { color: #77777c; font-size: 10px; }
+.record-row strong { font-size: 10px; text-align: right; }
 
 .reserve-row { margin-top: 18px; }
 .available-result { margin-top: 16px; padding: 18px; border-radius: 16px; background: #f1f7f3; }
 .available-result span, .available-result small { display: block; color: #647168; font-size: 11px; }
 .available-result strong { display: block; margin: 6px 0 5px; color: #1d6b42; font-size: clamp(27px, 8vw, 35px); letter-spacing: -.035em; }
 .available-result small { color: #7e8982; font-size: 10px; }
+
+.payment-breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+.payment-breakdown div { min-width: 0; padding: 13px; border-radius: 13px; background: #f7f7f9; }
+.payment-breakdown span { display: block; color: #7d7d82; font-size: 10px; }
+.payment-breakdown strong { display: block; margin-top: 5px; font-size: 13px; overflow-wrap: anywhere; }
+.payment-breakdown div:last-child strong { color: #1d6b42; }
+.result-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 14px; overflow: hidden; border: 1px solid #e8e8ec; border-radius: 15px; background: #e8e8ec; }
+.result-grid div { min-width: 0; padding: 15px 10px; background: #fff; }
+.result-grid span { display: block; color: #7d7d82; font-size: 9px; line-height: 1.35; }
+.result-grid strong { display: block; margin-top: 6px; font-size: 13px; overflow-wrap: anywhere; }
+.result-grid div:first-child strong, .result-grid div:last-child strong { color: #1d6b42; }
 
 .field-note { margin: 7px 2px 0; color: #9a5b14; font-size: 11px; line-height: 1.45; }
 .principal-flow { display: grid; grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 20px; padding: 17px 13px; border-radius: 16px; background: #f5f5f7; }
@@ -73,7 +87,7 @@ h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: -.025em; }
 .estimate-grid div { min-width: 0; padding: 16px 13px; background: #fff; }
 .estimate-grid strong { display: block; margin-top: 6px; font-size: 16px; overflow-wrap: anywhere; }
 .estimate-grid div:first-child strong { color: #1d6b42; }
-.assumption { margin: 11px 1px 0; color: #98989d; font-size: 10px; line-height: 1.5; }
+.assumption { margin: 10px 1px 0; color: #9a9a9f; font-size: 9px; line-height: 1.5; }
 
 .future-current { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; margin-bottom: 14px; padding: 0 2px; border-bottom: 1px solid #ededf0; }
 .future-current span { color: #6e6e73; font-size: 11px; }
@@ -96,7 +110,7 @@ h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: -.025em; }
 .history-delete { margin-top: 12px; padding: 0; border: 0; color: #a04a4a; background: transparent; font-size: 10px; }
 .history-local-note { margin: 12px 1px 0; color: #9a9a9f; font-size: 9px; line-height: 1.45; }
 
-footer { padding: 12px 25px max(30px, env(safe-area-inset-bottom)); color: #8e8e93; text-align: center; font-size: 10px; line-height: 1.6; }
+footer { padding: 8px 25px max(26px, env(safe-area-inset-bottom)); color: #8e8e93; text-align: center; font-size: 10px; line-height: 1.6; }
 [hidden] { display: none !important; }
 
 @media (min-width: 560px) {
@@ -110,4 +124,9 @@ footer { padding: 12px 25px max(30px, env(safe-area-inset-bottom)); color: #8e8e
   .card { padding-inline: 13px; }
   .principal-flow { padding-inline: 9px; }
   .principal-flow strong { font-size: 13px; }
+}
+
+@media (max-width: 390px) {
+  .result-grid strong, .future-summary strong { font-size: 11px; }
+  .payment-breakdown strong { font-size: 12px; }
 }
