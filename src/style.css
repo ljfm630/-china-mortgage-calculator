@@ -104,7 +104,7 @@ h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: -.025em; }
 .history-empty { padding: 16px; border-radius: 14px; color: #8a8a8f; background: #f7f7f9; font-size: 11px; line-height: 1.55; }
 .history-item { position: relative; padding: 15px; border: 1px solid #ececf0; border-radius: 15px; background: #fafafa; }
 .history-date { margin-bottom: 11px; font-size: 12px; font-weight: 700; }
-.history-item-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.history-item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 8px; }
 .history-item-grid span { display: block; color: #8a8a8f; font-size: 9px; }
 .history-item-grid strong { display: block; margin-top: 4px; font-size: 10px; overflow-wrap: anywhere; }
 .history-delete { margin-top: 12px; padding: 0; border: 0; color: #a04a4a; background: transparent; font-size: 10px; }
