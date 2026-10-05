@@ -63,7 +63,7 @@ $('#app').innerHTML = `
         ${profileInput('profileAnnualRate', '当前年利率', 'annualRate', 'number')}
         ${profileInput('profileOfficialRemainingMonths', '官方剩余期数', 'officialRemainingMonths', 'number')}
         ${profileInput('profileLoanDate', '放款日期', 'loanDate', 'date')}
-        ${profileInput('profileRepaymentMethod', '还款方式', 'repaymentMethod', 'text')}
+        ${repaymentMethodInput()}
         ${profileInput('profileOriginalTermMonths', '原贷款期限（月）', 'originalTermMonths', 'number')}
         ${profileInput('profilePaidInterest', '累计已支付利息', 'paidInterest', 'number')}
       </div>
@@ -237,6 +237,11 @@ function plainMoneyInput(id, label) {
     <span>${label}</span>
     <div class="money-input"><input id="${id}" type="number" min="0" step="0.01" inputmode="decimal" aria-label="${label}"><b>元</b></div>
   </label>`
+}
+
+function repaymentMethodInput() {
+  const options = ['', '自由还款', '等额本息', '等额本金', '其他']
+  return `<label class="money-field profile-field"><span>还款方式</span><div class="money-input select-input"><select id="profileRepaymentMethod" data-profile-key="repaymentMethod" aria-label="还款方式">${options.map((value) => `<option value="${value}">${value || '请选择'}</option>`).join('')}</select></div></label>`
 }
 
 function profileInput(id, label, key, type) {
