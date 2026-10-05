@@ -1,25 +1,5 @@
 const MAX_MONTHS = 1200
 
-/**
- * 已知合同事实仅作为上下文保存；未来规划必须使用用户从系统抄录的当前余额和
- * 当前最低还款额，不能用原本金减去历史记录来反推当前余额。
- */
-export const LOAN_CONTEXT = Object.freeze({
-  originalPrincipal: 1_160_000,
-  loanDate: '2024-10-17',
-  annualRate: 2.60,
-  originalTermMonths: 360,
-  officialRemainingMonths: 337,
-  repaymentMethod: '自由还款',
-  rateHistory: Object.freeze([
-    Object.freeze({ from: '2024-10-17', to: '2025-12-31', annualRate: 2.85 }),
-    Object.freeze({ from: '2026-01-01', to: null, annualRate: 2.60 }),
-  ]),
-  historicalPrepayments: Object.freeze([
-    Object.freeze({ date: '2026（利率调整后）', amount: 100_000 }),
-  ]),
-})
-
 /** 金额统一先转成“分”，避免在逐月测算中累积二进制浮点误差。 */
 export function toCents(value) {
   const number = Number(value)
