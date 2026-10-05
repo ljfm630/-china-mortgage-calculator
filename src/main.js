@@ -61,7 +61,7 @@ $('#app').innerHTML = `
       <div class="profile-grid">
         ${profileInput('profileOriginalPrincipal', '原贷款金额', 'originalPrincipal', 'number')}
         ${profileInput('profileAnnualRate', '当前年利率', 'annualRate', 'number')}
-        ${profileInput('profileOfficialRemainingMonths', '官方剩余期数', 'officialRemainingMonths', 'number')}
+        ${profileInput('profileOfficialRemainingMonths', '当前实际剩余期数', 'officialRemainingMonths', 'number')}
         ${profileInput('profileLoanDate', '放款日期', 'loanDate', 'date')}
         ${repaymentMethodInput()}
         ${profileInput('profileOriginalTermMonths', '原贷款期限（月）', 'originalTermMonths', 'number')}
@@ -83,7 +83,7 @@ $('#app').innerHTML = `
 
       <dl class="facts facts-primary">
         <div><dt>当前年利率</dt><dd id="annualRateDisplay">—</dd></div>
-        <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">—</dd></div>
+        <div><dt>当前实际剩余期数</dt><dd id="officialRemainingMonths">—</dd></div>
       </dl>
 
       <div class="repayment-progress" aria-label="还贷进度">
