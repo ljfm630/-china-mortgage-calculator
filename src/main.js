@@ -367,6 +367,7 @@ function renderFuturePlan() {
           <div><span>总还款</span><strong>${money(step.totalPayment)}</strong></div>
           <div><span>额外提前还款</span><strong>${money(step.extraPrepayment)}</strong></div>
           <div><span>预计还款后余额</span><strong>${money(step.endingBalance)}</strong></div>
+          <div><span>本次预计节省利息</span><strong>${money(step.estimatedInterestSaved)}</strong></div>
         </div>
         <button type="button" class="history-delete" data-future-month="${step.month}">删除</button>
       </article>
