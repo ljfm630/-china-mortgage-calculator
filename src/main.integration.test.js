@@ -8,6 +8,7 @@ class FakeElement {
     this.textContent = ''
     this.value = ''
     this.hidden = false
+    this.style = {}
   }
 
   set innerHTML(html) {
@@ -69,6 +70,10 @@ test('main.js 完整初始化后将官方期数和规划结果写入最终页面
   assert.equal(elements.get('monthsSaved').textContent, '14 个月')
   assert.equal(elements.get('currentBalance').value, 1_012_206.88)
   assert.equal(elements.get('minimumPayment').value, 4_256.67)
+  assert.equal(elements.get('principalRepaid').textContent, '147,793.12 元')
+  assert.equal(elements.get('principalRemaining').textContent, '1,012,206.88 元')
+  assert.equal(elements.get('principalProgressPercent').textContent, '12.7%')
+  assert.equal(elements.get('principalProgressFill').style.width, '12.7%')
   assert.equal(elements.get('totalMonthlyPayment').value, 30_000)
   assert.equal(elements.get('totalMonthlyPaymentDisplay').textContent, '30,000 元')
   assert.equal(elements.get('minimumPaymentDisplay').textContent, '4,256.67 元')
