@@ -1,4 +1,4 @@
-import { simulatePrepayment, suggestedPrepayment } from './mortgage.js'
+import { projectLoan, simulatePrepayment, suggestedPrepayment } from './mortgage.js'
 import { renderSimulationResult } from './simulation-view.js'
 import { calculateExtraPrepayment } from './payment-plan.js'
 import { simulateFuturePlan } from './future-plan.js'
@@ -19,6 +19,7 @@ const PROFILE_DEFAULTS = {
   loanDate: '',
   repaymentMethod: '',
   originalTermMonths: 0,
+  paidInterest: 0,
 }
 const loanProfile = { ...PROFILE_DEFAULTS, ...loadLoanProfile() }
 
@@ -64,6 +65,7 @@ $('#app').innerHTML = `
         ${profileInput('profileLoanDate', '放款日期', 'loanDate', 'date')}
         ${profileInput('profileRepaymentMethod', '还款方式', 'repaymentMethod', 'text')}
         ${profileInput('profileOriginalTermMonths', '原贷款期限（月）', 'originalTermMonths', 'number')}
+        ${profileInput('profilePaidInterest', '累计已支付利息', 'paidInterest', 'number')}
       </div>
       <p id="profileHint" class="field-note" hidden></p>
     </section>
@@ -84,17 +86,38 @@ $('#app').innerHTML = `
         <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">—</dd></div>
       </dl>
 
-      <div class="repayment-progress" aria-label="本金偿还进度">
-        <div class="progress-head">
-          <span>本金偿还进度</span>
-          <strong id="principalProgressPercent">—</strong>
+      <div class="repayment-progress" aria-label="还贷进度">
+        <div class="progress-block">
+          <div class="progress-head">
+            <span>本金偿还进度</span>
+            <strong id="principalProgressPercent">—</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true"><div id="principalProgressFill" class="progress-fill"></div></div>
+          <div class="progress-stats">
+            <div><span>已偿还本金</span><strong id="principalRepaid">—</strong></div>
+            <div><span>当前剩余本金</span><strong id="principalRemaining">—</strong></div>
+          </div>
         </div>
-        <div class="progress-track" aria-hidden="true"><div id="principalProgressFill" class="progress-fill"></div></div>
-        <div class="progress-stats">
-          <div><span>已偿还本金</span><strong id="principalRepaid">—</strong></div>
-          <div><span>当前剩余本金</span><strong id="principalRemaining">—</strong></div>
+
+        <div class="interest-cost">
+          <span>累计已支付利息</span>
+          <strong id="paidInterestDisplay">—</strong>
+          <small>按你录入的实际累计利息显示，用来提醒已经发生的融资成本。</small>
         </div>
-        <small>按原贷款本金与当前贷款余额计算，不代表累计已支付金额。</small>
+
+        <div class="progress-block interest-progress-block">
+          <div class="progress-head">
+            <span>未来利息减负</span>
+            <strong id="interestReductionPercent">—</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true"><div id="interestReductionFill" class="progress-fill interest-progress-fill"></div></div>
+          <div class="progress-stats">
+            <div><span>预计少付利息</span><strong id="interestReducedAmount">—</strong></div>
+            <div><span>基准剩余利息</span><strong id="baselineRemainingInterest">—</strong></div>
+          </div>
+        </div>
+
+        <small>本金进度按原贷款本金与当前余额计算；利息减负按“仅按当前最低还款”与当前规划对比。</small>
       </div>
 
       <details class="loan-details">
@@ -251,6 +274,8 @@ function render() {
   $('#principalRemaining').textContent = money(state.currentBalance)
   $('#principalProgressPercent').textContent = `${progressPercent.toFixed(1)}%`
   $('#principalProgressFill').style.width = `${progressPercent.toFixed(1)}%`
+  const paidInterest = Math.max(0, Number(loanProfile.paidInterest) || 0)
+  $('#paidInterestDisplay').textContent = paidInterest > 0 ? money(paidInterest) : '未填写'
 
   const available = suggestedPrepayment(state.savings, 50_000)
   $('#availableAmount').textContent = money(available)
@@ -272,6 +297,21 @@ function render() {
   })
 
   renderSimulationResult(simulationElements, result, money)
+
+  const baselineProjection = projectLoan({
+    principal: state.currentBalance,
+    annualRate: loanProfile.annualRate,
+    monthlyPayment: state.minimumPayment,
+  })
+  const baselineRemainingInterest = baselineProjection.payable ? baselineProjection.totalInterest : 0
+  const interestReduced = Math.max(0, Number(result.estimatedInterestSaved) || 0)
+  const interestReductionPercent = baselineRemainingInterest > 0
+    ? Math.min(100, interestReduced / baselineRemainingInterest * 100)
+    : 0
+  $('#baselineRemainingInterest').textContent = baselineProjection.payable ? money(baselineRemainingInterest) : '待完善'
+  $('#interestReducedAmount').textContent = baselineProjection.payable ? money(interestReduced) : '待完善'
+  $('#interestReductionPercent').textContent = baselineProjection.payable ? `${interestReductionPercent.toFixed(1)}%` : '—'
+  $('#interestReductionFill').style.width = `${interestReductionPercent.toFixed(1)}%`
 
   const warning = $('#amountWarning')
   const belowMinimum = totalMonthlyPayment < state.minimumPayment
@@ -327,6 +367,7 @@ function renderFuturePlan() {
           <div><span>总还款</span><strong>${money(step.totalPayment)}</strong></div>
           <div><span>额外提前还款</span><strong>${money(step.extraPrepayment)}</strong></div>
           <div><span>预计还款后余额</span><strong>${money(step.endingBalance)}</strong></div>
+          <div><span>本次预计节省利息</span><strong>${money(step.estimatedInterestSaved)}</strong></div>
         </div>
         <button type="button" class="history-delete" data-future-month="${step.month}">删除</button>
       </article>
@@ -403,7 +444,7 @@ function renderProfile() {
   $('#originalTermDisplay').textContent = Number(loanProfile.originalTermMonths) > 0 ? loanProfile.originalTermMonths+' 期' : '未设置'
   const hint=$('#profileHint'); hint.hidden=profileReady(); if(!profileReady()) hint.textContent='请填写原贷款金额、当前年利率和官方剩余期数后开始测算。'
 }
-function setCalculationUnavailable() { simulationElements.plannedMonths.textContent='待设置'; simulationElements.monthsSaved.textContent='—'; simulationElements.interestSaved.textContent='—'; simulationElements.principalBefore.textContent='—'; simulationElements.appliedAmount.textContent='—'; simulationElements.principalAfter.textContent='—' }
+function setCalculationUnavailable() { simulationElements.plannedMonths.textContent='待设置'; simulationElements.monthsSaved.textContent='—'; simulationElements.interestSaved.textContent='—'; simulationElements.principalBefore.textContent='—'; simulationElements.appliedAmount.textContent='—'; simulationElements.principalAfter.textContent='—'; $('#baselineRemainingInterest').textContent='—'; $('#interestReducedAmount').textContent='—'; $('#interestReductionPercent').textContent='—'; $('#interestReductionFill').style.width='0%' }
 function loadStoredState() {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY))

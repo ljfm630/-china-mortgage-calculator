@@ -37,7 +37,18 @@ export function simulateFuturePlan({
   let balance = toCents(currentPrincipal)
   let elapsedMonths = 0
   let planInterestCents = 0
+  let previousCumulativeSavedCents = 0
   const steps = []
+
+  const baseline = projectLoan({
+    principal: currentPrincipal,
+    annualRate,
+    monthlyPayment: currentMinimumPayment,
+  })
+  if (!baseline.payable) {
+    return { payable: false, steps, estimatedMonthsAfter: null, estimatedMonthsSaved: null, estimatedInterestSaved: null }
+  }
+  const baselineInterestCents = toCents(baseline.totalInterest)
 
   const normalized = [...entries]
     .map((entry) => ({
@@ -73,26 +84,35 @@ export function simulateFuturePlan({
     balance = planned.balance
     planInterestCents += planned.interest
     elapsedMonths += 1
+
+    const stepTail = projectLoan({
+      principal: fromCents(balance),
+      annualRate,
+      monthlyPayment: currentMinimumPayment,
+    })
+    const cumulativeSavedCents = stepTail.payable
+      ? Math.max(0, baselineInterestCents - (planInterestCents + toCents(stepTail.totalInterest)))
+      : previousCumulativeSavedCents
+    const marginalSavedCents = Math.max(0, cumulativeSavedCents - previousCumulativeSavedCents)
+    previousCumulativeSavedCents = cumulativeSavedCents
+
     steps.push({
       month: entry.month,
       totalPayment: entry.totalPayment,
       extraPrepayment: fromCents(planned.appliedExtra),
       endingBalance: fromCents(balance),
+      estimatedInterestSaved: fromCents(marginalSavedCents),
+      cumulativeInterestSaved: fromCents(cumulativeSavedCents),
     })
   }
 
-  const baseline = projectLoan({
-    principal: currentPrincipal,
-    annualRate,
-    monthlyPayment: currentMinimumPayment,
-  })
   const tail = projectLoan({
     principal: fromCents(balance),
     annualRate,
     monthlyPayment: currentMinimumPayment,
   })
 
-  if (!baseline.payable || !tail.payable) {
+  if (!tail.payable) {
     return { payable: false, steps, estimatedMonthsAfter: null, estimatedMonthsSaved: null, estimatedInterestSaved: null }
   }
 
@@ -100,7 +120,7 @@ export function simulateFuturePlan({
   const modelMonthsSaved = Math.max(0, baseline.months - plannedModelMonths)
   const estimatedMonthsAfter = Math.max(0, Number(officialRemainingMonths) - modelMonthsSaved)
   const plannedInterestCents = planInterestCents + toCents(tail.totalInterest)
-  const estimatedInterestSaved = fromCents(Math.max(0, toCents(baseline.totalInterest) - plannedInterestCents))
+  const estimatedInterestSaved = fromCents(Math.max(0, baselineInterestCents - plannedInterestCents))
 
   return {
     payable: true,

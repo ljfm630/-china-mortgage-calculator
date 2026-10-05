@@ -37,6 +37,10 @@ describe('还款规划核心', () => {
     assert.equal(result.steps.length, 3)
     assert.ok(result.steps[0].endingBalance > result.steps[1].endingBalance)
     assert.ok(result.steps[1].endingBalance > result.steps[2].endingBalance)
+    assert.ok(result.steps.every((step) => step.estimatedInterestSaved >= 0))
+    assert.ok(result.steps.every((step) => step.cumulativeInterestSaved >= step.estimatedInterestSaved))
+    const summedMarginalSavings = result.steps.reduce((sum, step) => sum + step.estimatedInterestSaved, 0)
+    assert.ok(Math.abs(summedMarginalSavings - result.estimatedInterestSaved) < 0.02)
     assert.ok(result.estimatedMonthsSaved > 0)
   })
   it('最低还款不足以覆盖利息时不可还清', () => {
