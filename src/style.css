@@ -151,3 +151,5 @@ footer { padding: 8px 25px max(26px, env(safe-area-inset-bottom)); color: #8e8e9
 .interest-cost small { line-height: 1.45; }
 .interest-progress-block { padding-top: 2px; }
 .interest-progress-fill { background: #b06a42; }
+
+.select-input select { width:100%; border:0; outline:0; background:transparent; color:#1d1d1f; font:inherit; font-size:16px; font-weight:650; appearance:auto; }
