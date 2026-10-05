@@ -1,15 +1,8 @@
-const CACHE_NAME = 'gjj-planner-pwa-v1'
+const CACHE_NAME = 'gjj-planner-pwa-v2'
+const OFFLINE_URL = './index.html'
 const APP_SHELL = [
-  './',
-  './index.html',
   './icon.svg',
-  './src/style.css?v=20261005-streamlined-ui',
-  './src/entry-future-plan.js?v=2',
-  './src/main.js?v=20261005-streamlined-ui',
-  './src/mortgage.js',
-  './src/payment-plan.js',
-  './src/future-plan.js',
-  './src/simulation-view.js',
+  './manifest.webmanifest',
 ]
 
 self.addEventListener('install', (event) => {
@@ -28,11 +21,23 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        const copy = response.clone()
+        caches.open(CACHE_NAME).then((cache) => cache.put(OFFLINE_URL, copy))
+        return response
+      }).catch(() => caches.match(OFFLINE_URL))
+    )
+    return
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+    fetch(event.request).then((response) => {
       const copy = response.clone()
       caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
       return response
-    }).catch(() => caches.match('./index.html')))
+    }).catch(() => caches.match(event.request))
   )
 })
