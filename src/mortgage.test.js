@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { LOAN_CONTEXT, projectLoan, simulatePrepayment, toCents } from './mortgage.js'
 import { renderSimulationResult } from './simulation-view.js'
 import { calculateExtraPrepayment } from './payment-plan.js'
+import { simulateFuturePlan } from './future-plan.js'
 
 describe('北京国管公积金自由还款规划核心', () => {
   it('保留已知合同事实和历史提前还款，但不反推当前余额', () => {
@@ -110,6 +111,27 @@ describe('北京国管公积金自由还款规划核心', () => {
     assert.equal(result.estimatedMonthsAfter, 323)
     assert.equal(result.estimatedMonthsSaved, 14)
     assert.equal(result.estimatedInterestSaved, 26_711.82)
+  })
+
+  it('连续三个月计划可叠加计算余额、期数和利息', () => {
+    const result = simulateFuturePlan({
+      currentPrincipal: 1_012_206.88,
+      annualRate: 2.60,
+      currentMinimumPayment: 4_256.67,
+      officialRemainingMonths: 337,
+      startMonth: '2026-10',
+      entries: [
+        { month: '2026-10', totalPayment: 30_000 },
+        { month: '2026-11', totalPayment: 20_000 },
+        { month: '2026-12', totalPayment: 10_000 },
+      ],
+    })
+    assert.equal(result.steps[0].endingBalance, 984_344.22)
+    assert.equal(result.steps[1].endingBalance, 966_442.86)
+    assert.equal(result.steps[2].endingBalance, 958_524.38)
+    assert.equal(result.estimatedMonthsAfter, 315)
+    assert.equal(result.estimatedMonthsSaved, 22)
+    assert.equal(result.estimatedInterestSaved, 47_844.19)
   })
 
   it('页面保留官方当前数据并明确传入官方期数', () => {
