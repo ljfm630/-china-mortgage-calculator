@@ -5,11 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f5f5f7" />
     <meta name="description" content="我的公积金还款规划个人工具" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="还款规划" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
     <title>我的公积金还款规划</title>
     <link rel="stylesheet" href="./src/style.css?v=20261005-streamlined-ui" />
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="./src/entry-future-plan.js?v=2"></script>
+    <script>
+      if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"))
+    </script>
   </body>
 </html>
