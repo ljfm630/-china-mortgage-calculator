@@ -76,11 +76,10 @@ $('#app').innerHTML = `
         <small>按原贷款本金与当前贷款余额计算，不代表累计已支付金额。</small>
       </div>
 
-      <div class="loan-records" aria-label="贷款记录和利率记录">
-        <h3>贷款记录 / 利率记录</h3>
+      <div class="loan-records" aria-label="利率记录">
+        <h3>利率记录</h3>
         <div class="record-row"><span>2024-10-17—2025-12-31</span><strong>2.85%</strong></div>
         <div class="record-row"><span>2026-01-01 起</span><strong>2.60%</strong></div>
-        <div class="record-row"><span>2026 年利率调整后</span><strong>提前还款 ${money(100_000)}</strong></div>
       </div>
     </section>
 
