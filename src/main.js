@@ -210,7 +210,7 @@ $('#app').innerHTML = `
         <div><span>预计结清</span><strong id="futurePayoffDate">—</strong></div>
       </div>
       <div class="future-actions"><button id="clearFuturePlan" class="secondary-button" type="button">清空未来计划</button></div>
-      <p class="history-local-note">本月金额自动接续上方规划；未来月份可逐笔添加、删除并即时重算。</p>
+      <p class="history-local-note">余额为从当前月份起连续执行计划后的累计预计值；每月总还款会先覆盖当月预计利息，剩余部分才减少本金。</p>
     </section>
 
     <section class="card utility-card" aria-labelledby="data-title">
@@ -369,9 +369,11 @@ function renderFuturePlan() {
       <article class="history-item">
         <div class="history-date">${step.month}</div>
         <div class="history-item-grid">
-          <div><span>总还款</span><strong>${money(step.totalPayment)}</strong></div>
-          <div><span>额外提前还款</span><strong>${money(step.extraPrepayment)}</strong></div>
-          <div><span>预计还款后余额</span><strong>${money(step.endingBalance)}</strong></div>
+          <div><span>该月总还款</span><strong>${money(step.totalPayment)}</strong></div>
+          <div><span>其中预计利息</span><strong>${money(step.estimatedInterestPayment)}</strong></div>
+          <div><span>该月预计减少本金</span><strong>${money(step.principalReduction)}</strong></div>
+          <div><span>其中额外提前还本</span><strong>${money(step.extraPrepayment)}</strong></div>
+          <div><span>执行至该月后预计余额</span><strong>${money(step.endingBalance)}</strong></div>
           <div><span>本次预计节省利息</span><strong>${money(step.estimatedInterestSaved)}</strong></div>
         </div>
         <button type="button" class="history-delete" data-future-month="${step.month}">删除</button>
