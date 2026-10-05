@@ -61,6 +61,19 @@ $('#app').innerHTML = `
         <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">${LOAN_CONTEXT.officialRemainingMonths} 期</dd></div>
       </dl>
 
+      <div class="repayment-progress" aria-label="本金偿还进度">
+        <div class="progress-head">
+          <span>本金偿还进度</span>
+          <strong id="principalProgressPercent">—</strong>
+        </div>
+        <div class="progress-track" aria-hidden="true"><div id="principalProgressFill" class="progress-fill"></div></div>
+        <div class="progress-stats">
+          <div><span>已偿还本金</span><strong id="principalRepaid">—</strong></div>
+          <div><span>当前剩余本金</span><strong id="principalRemaining">—</strong></div>
+        </div>
+        <small>按原贷款本金与当前贷款余额计算，不代表累计已支付金额。</small>
+      </div>
+
       <div class="loan-records" aria-label="贷款记录和利率记录">
         <h3>贷款记录 / 利率记录</h3>
         <div class="record-row"><span>2024-10-17—2025-12-31</span><strong>2.85%</strong></div>
@@ -138,6 +151,16 @@ function render() {
   document.querySelectorAll('[data-key]').forEach((input) => {
     if (document.activeElement !== input) input.value = state[input.dataset.key]
   })
+
+  const originalPrincipal = LOAN_CONTEXT.originalPrincipal
+  const repaidPrincipal = Math.max(0, originalPrincipal - state.currentBalance)
+  const progressPercent = originalPrincipal > 0
+    ? Math.min(100, Math.max(0, repaidPrincipal / originalPrincipal * 100))
+    : 0
+  $('#principalRepaid').textContent = money(repaidPrincipal)
+  $('#principalRemaining').textContent = money(state.currentBalance)
+  $('#principalProgressPercent').textContent = `${progressPercent.toFixed(1)}%`
+  $('#principalProgressFill').style.width = `${progressPercent.toFixed(1)}%`
 
   const available = suggestedPrepayment(state.savings, 50_000)
   $('#availableAmount').textContent = money(available)

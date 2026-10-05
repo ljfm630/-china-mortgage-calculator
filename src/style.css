@@ -37,7 +37,19 @@ h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: -.025em; }
 .facts dt, .reserve-row span, .applied-row span { color: #6e6e73; font-size: 12px; }
 .facts dd, .reserve-row strong, .applied-row strong { margin: 0; font-size: 13px; font-weight: 650; text-align: right; }
 
-.loan-records { margin-top: 19px; padding: 15px; border-radius: 15px; background: #f7f7f9; }
+.repayment-progress { margin-top: 19px; padding: 16px; border-radius: 16px; background: #f7f7f9; }
+.progress-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.progress-head span { color: #6e6e73; font-size: 11px; font-weight: 600; }
+.progress-head strong { color: #1d6b42; font-size: 15px; }
+.progress-track { height: 8px; margin-top: 11px; overflow: hidden; border-radius: 999px; background: #e6e7ea; }
+.progress-fill { width: 0; height: 100%; border-radius: inherit; background: #2d754b; transition: width .2s ease; }
+.progress-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 13px; }
+.progress-stats div { min-width: 0; }
+.progress-stats span { display: block; color: #8a8a8f; font-size: 10px; }
+.progress-stats strong { display: block; margin-top: 4px; font-size: 12px; overflow-wrap: anywhere; }
+.repayment-progress small { display: block; margin-top: 10px; color: #9a9a9f; font-size: 9px; line-height: 1.45; }
+
+.loan-records { margin-top: 13px; padding: 15px; border-radius: 15px; background: #f7f7f9; }
 .loan-records h3 { margin: 0 0 8px; color: #6e6e73; font-size: 11px; letter-spacing: .02em; }
 .record-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; }
 .record-row span { color: #77777c; font-size: 11px; }
