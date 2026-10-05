@@ -38,9 +38,9 @@ const initialSimulation = simulatePrepayment({
 
 $('#app').innerHTML = `
   <header class="page-header">
-    <span class="eyebrow">个人工具</span>
+    <span class="eyebrow">个人还款规划</span>
     <h1>我的公积金还款规划</h1>
-    <p>以国管公积金系统显示的数据为准，做一份简单的个人测算。</p>
+    <p>看清余额，安排本月，规划未来。</p>
   </header>
 
   <main>
@@ -55,12 +55,8 @@ $('#app').innerHTML = `
         ${moneyInput('minimumPayment', '当前最低还款额', '以公积金系统实际显示为准')}
       </div>
 
-      <dl class="facts">
-        <div><dt>年利率</dt><dd>${LOAN_CONTEXT.annualRate}%</dd></div>
-        <div><dt>放款日期</dt><dd>${LOAN_CONTEXT.loanDate}</dd></div>
-        <div><dt>还款方式</dt><dd>国管公积金${LOAN_CONTEXT.repaymentMethod}</dd></div>
-        <div><dt>原贷款金额</dt><dd>${money(LOAN_CONTEXT.originalPrincipal)}</dd></div>
-        <div><dt>原贷款期限</dt><dd>${LOAN_CONTEXT.originalTermMonths} 期</dd></div>
+      <dl class="facts facts-primary">
+        <div><dt>当前年利率</dt><dd>${LOAN_CONTEXT.annualRate}%</dd></div>
         <div><dt>官方剩余期数</dt><dd id="officialRemainingMonths">${LOAN_CONTEXT.officialRemainingMonths} 期</dd></div>
       </dl>
 
@@ -77,11 +73,19 @@ $('#app').innerHTML = `
         <small>按原贷款本金与当前贷款余额计算，不代表累计已支付金额。</small>
       </div>
 
-      <div class="loan-records" aria-label="利率记录">
-        <h3>利率记录</h3>
-        <div class="record-row"><span>2024-10-17—2025-12-31</span><strong>2.85%</strong></div>
-        <div class="record-row"><span>2026-01-01 起</span><strong>2.60%</strong></div>
-      </div>
+      <details class="loan-details">
+        <summary>贷款详情与利率记录</summary>
+        <dl class="facts facts-secondary">
+          <div><dt>放款日期</dt><dd>${LOAN_CONTEXT.loanDate}</dd></div>
+          <div><dt>还款方式</dt><dd>国管公积金${LOAN_CONTEXT.repaymentMethod}</dd></div>
+          <div><dt>原贷款金额</dt><dd>${money(LOAN_CONTEXT.originalPrincipal)}</dd></div>
+          <div><dt>原贷款期限</dt><dd>${LOAN_CONTEXT.originalTermMonths} 期</dd></div>
+        </dl>
+        <div class="loan-records" aria-label="利率记录">
+          <div class="record-row"><span>2024-10-17—2025-12-31</span><strong>2.85%</strong></div>
+          <div class="record-row"><span>2026-01-01 起</span><strong>2.60%</strong></div>
+        </div>
+      </details>
     </section>
 
     <section class="card" aria-labelledby="fund-title">
@@ -102,35 +106,40 @@ $('#app').innerHTML = `
     <section class="card" aria-labelledby="simulation-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">算</span>
-        <div><span class="eyebrow">规划测算结果</span><h2 id="simulation-title">如果现在提前还款</h2></div>
+        <div><span class="eyebrow">本月决策</span><h2 id="simulation-title">本月还款规划</h2></div>
       </div>
 
       ${moneyInput('totalMonthlyPayment', '本月计划总还款额')}
       <p id="amountWarning" class="field-note" hidden></p>
 
-      <div class="applied-row"><span>本月计划总还款额</span><strong id="totalMonthlyPaymentDisplay">—</strong></div>
-      <div class="applied-row"><span>当月最低还款额</span><strong id="minimumPaymentDisplay">—</strong></div>
-      <div class="applied-row"><span>额外提前还款</span><strong id="extraPrepaymentDisplay">—</strong></div>
-
-      <div class="principal-flow" aria-label="提前还款前后本金">
-        <div><span>提前还款前本金</span><strong id="principalBefore">—</strong></div>
-        <span class="flow-arrow" aria-hidden="true">→</span>
-        <div><span>提前还款后本金</span><strong id="principalAfter">—</strong></div>
+      <div class="payment-breakdown">
+        <div><span>最低还款</span><strong id="minimumPaymentDisplay">—</strong></div>
+        <div><span>额外提前还本</span><strong id="extraPrepaymentDisplay">—</strong></div>
       </div>
-      <div class="applied-row"><span>实际额外提前还款</span><strong id="appliedAmount">—</strong></div>
-      <div class="applied-row"><span>规划测算剩余期数</span><strong id="plannedMonths">${initialSimulation.estimatedMonthsAfter} 期（规划测算）</strong></div>
+      <strong id="totalMonthlyPaymentDisplay" class="sr-only">—</strong>
 
-      <div class="estimate-grid">
+      <div class="result-grid">
+        <div><span>预计剩余</span><strong id="plannedMonths">${initialSimulation.estimatedMonthsAfter} 期（规划测算）</strong></div>
+        <div><span>预计缩短</span><strong id="monthsSaved">—</strong></div>
         <div><span>预计节省利息</span><strong id="interestSaved">—</strong></div>
-        <div><span>预计可缩短</span><strong id="monthsSaved">—</strong></div>
       </div>
-      <p class="assumption">按当前条件规划测算，预计可缩短约 <b id="monthsSavedText">—</b>。测算结果仅用于个人还款规划，实际最低还款额、剩余期限及利息以国管公积金中心后续核定为准。</p>
+
+      <details class="calculation-details">
+        <summary>查看测算明细</summary>
+        <div class="principal-flow" aria-label="提前还款前后本金">
+          <div><span>还款前本金</span><strong id="principalBefore">—</strong></div>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <div><span>还款后本金</span><strong id="principalAfter">—</strong></div>
+        </div>
+        <div class="applied-row"><span>实际额外提前还本</span><strong id="appliedAmount">—</strong></div>
+      </details>
+      <p class="assumption">测算用于个人规划，实际余额、最低还款额、期限和利息以国管公积金系统为准。<b id="monthsSavedText" class="sr-only">—</b></p>
     </section>
 
     <section class="card" aria-labelledby="future-plan-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">策</span>
-        <div><span class="eyebrow">连续叠加测算</span><h2 id="future-plan-title">未来还款计划</h2></div>
+        <div><span class="eyebrow">多月叠加</span><h2 id="future-plan-title">未来还款计划</h2></div>
       </div>
 
       <div class="future-current">
@@ -155,7 +164,7 @@ $('#app').innerHTML = `
         <div><span>预计累计缩短</span><strong id="futureMonthsSaved">—</strong></div>
         <div><span>预计累计节省利息</span><strong id="futureInterestSaved">—</strong></div>
       </div>
-      <p class="history-local-note">本月金额取自上方“本月计划总还款额”；未来计划只保存在当前浏览器中，可随时删除重算。</p>
+      <p class="history-local-note">本月金额自动接续上方规划；未来月份可逐笔添加、删除并即时重算。</p>
     </section>
   </main>
 
@@ -324,11 +333,6 @@ function loadStoredState() {
 }
 
 document.addEventListener('input', (event) => {
-  if (event.target.id === 'repaymentRecordTotal') {
-    renderRecordExtra()
-    return
-  }
-
   const key = event.target.dataset.key
   if (!key) return
   state[key] = Math.max(0, Number(event.target.value) || 0)
