@@ -9,19 +9,32 @@ function parseMonth(value) {
 }
 
 function monthlyStep(balanceCents, annualRate, minimumPaymentCents, extraPrepaymentCents = 0) {
-  const appliedExtra = Math.min(balanceCents, Math.max(0, extraPrepaymentCents))
-  let balance = balanceCents - appliedExtra
+  let balance = balanceCents
   if (balance === 0) {
-    return { payable: true, balance: 0, interest: 0, appliedExtra }
+    return { payable: true, balance: 0, interest: 0, regularPrincipalPaid: 0, appliedExtra: 0, principalReduction: 0 }
   }
 
+  // 当月利息先按期初剩余本金估算；最低还款先覆盖利息，剩余部分才归还本金。
   const interest = Math.round(balance * (Number(annualRate) / 1200))
   if (minimumPaymentCents <= interest) {
-    return { payable: false, balance, interest, appliedExtra }
+    return { payable: false, balance, interest, regularPrincipalPaid: 0, appliedExtra: 0, principalReduction: 0 }
   }
-  const principalPaid = Math.min(balance, minimumPaymentCents - interest)
-  balance -= principalPaid
-  return { payable: true, balance, interest, appliedExtra }
+
+  const regularPrincipalPaid = Math.min(balance, minimumPaymentCents - interest)
+  balance -= regularPrincipalPaid
+
+  // “总还款额 - 最低还款额”的部分视为额外提前还本。
+  const appliedExtra = Math.min(balance, Math.max(0, extraPrepaymentCents))
+  balance -= appliedExtra
+
+  return {
+    payable: true,
+    balance,
+    interest,
+    regularPrincipalPaid,
+    appliedExtra,
+    principalReduction: regularPrincipalPaid + appliedExtra,
+  }
 }
 
 export function simulateFuturePlan({
@@ -101,6 +114,9 @@ export function simulateFuturePlan({
       totalPayment: entry.totalPayment,
       extraPrepayment: fromCents(planned.appliedExtra),
       endingBalance: fromCents(balance),
+      estimatedInterestPayment: fromCents(planned.interest),
+      regularPrincipalPaid: fromCents(planned.regularPrincipalPaid),
+      principalReduction: fromCents(planned.principalReduction),
       estimatedInterestSaved: fromCents(marginalSavedCents),
       cumulativeInterestSaved: fromCents(cumulativeSavedCents),
     })
