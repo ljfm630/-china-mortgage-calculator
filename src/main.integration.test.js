@@ -97,4 +97,8 @@ test('main.js 完整初始化后将官方期数和规划结果写入最终页面
   assert.match(elements.get('futurePlanList').innerHTML, /2026-11/)
   assert.match(elements.get('futurePlanList').innerHTML, /15,743\.33 元/)
   assert.match(stored.get('gjj-future-payment-plan-v1'), /2026-11/)
+  assert.equal(elements.get('futurePayoffDate').textContent, '2052年12月')
+  assert.ok(elements.get('clearFuturePlan'), '应提供清空未来计划按钮')
+  assert.ok(elements.get('exportData'), '应提供数据导出按钮')
+  assert.ok(elements.get('importData'), '应提供数据导入按钮')
 })
