@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { LOAN_CONTEXT, projectLoan, simulatePrepayment, toCents } from './mortgage.js'
 import { renderSimulationResult } from './simulation-view.js'
+import { calculateExtraPrepayment } from './payment-plan.js'
 
 describe('北京国管公积金自由还款规划核心', () => {
   it('保留已知合同事实和历史提前还款，但不反推当前余额', () => {
@@ -87,6 +88,28 @@ describe('北京国管公积金自由还款规划核心', () => {
     assert.equal(result.estimatedMonthsAfter, 321)
     assert.equal(result.estimatedMonthsSaved, 16)
     assert.equal(result.estimatedInterestSaved, 30_995.22)
+  })
+
+  it('本月计划总还款额按分拆出额外提前还款', () => {
+    assert.equal(calculateExtraPrepayment(30_000, 4_256.67), 25_743.33)
+    assert.equal(calculateExtraPrepayment(4_256.67, 4_256.67), 0)
+    assert.equal(calculateExtraPrepayment(3_000, 4_256.67), 0)
+  })
+
+  it('3 万元本月总还款按 25,743.33 元额外还本进行规划', () => {
+    const extraPrepayment = calculateExtraPrepayment(30_000, 4_256.67)
+    const result = simulatePrepayment({
+      currentPrincipal: 1_012_206.88,
+      prepaymentAmount: extraPrepayment,
+      annualRate: 2.60,
+      currentMinimumPayment: 4_256.67,
+      officialRemainingMonths: 337,
+    })
+    assert.equal(result.appliedPrepayment, 25_743.33)
+    assert.equal(result.principalAfterPrepayment, 986_463.55)
+    assert.equal(result.estimatedMonthsAfter, 323)
+    assert.equal(result.estimatedMonthsSaved, 14)
+    assert.equal(result.estimatedInterestSaved, 26_711.82)
   })
 
   it('页面保留官方当前数据并明确传入官方期数', () => {
