@@ -161,4 +161,10 @@ footer { padding: 8px 25px max(26px, env(safe-area-inset-bottom)); color: #8e8e9
 .history-relief-summary strong { display:block; margin-top:6px; font-size:12px; overflow-wrap:anywhere; }
 .history-relief-summary div:nth-child(2) strong,
 .history-relief-summary div:nth-child(4) strong { color:#1d6b42; }
-@media (min-width:560px) { .history-form { grid-template-columns:1fr 1fr 1fr; } }
+@media (min-width:560px) { .history-form { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.card[aria-labelledby="loan-title"] { border-color:#dfe8e2; }
+.card[aria-labelledby="simulation-title"] { border-color:#d9e8de; }
+.card[aria-labelledby="history-title"], .profile-card, .utility-card { background:#fcfcfd; }
+.history-relief-summary { grid-template-columns:repeat(3,minmax(0,1fr)); }
+@media (max-width:390px) { .history-relief-summary { grid-template-columns:1fr; } }
