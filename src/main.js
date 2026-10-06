@@ -193,7 +193,7 @@ $('#app').innerHTML = `
       <div class="future-summary">
         <div><span>叠加计划后预计剩余</span><strong id="futurePlannedMonths">—</strong></div>
         <div><span>预计累计缩短</span><strong id="futureMonthsSaved">—</strong></div>
-        <div><span>未来计划可省利息</span><strong id="futureInterestSaved">—</strong></div>
+        <div><span id="futureInterestSavedLabel">未来累计预计省息</span><strong id="futureInterestSaved">—</strong></div>
         <div><span>预计结清</span><strong id="futurePayoffDate">—</strong></div>
       </div>
       <div class="future-actions"><button id="clearFuturePlan" class="secondary-button" type="button">清空未来计划</button></div>
@@ -225,7 +225,7 @@ $('#app').innerHTML = `
       <div class="history-relief-summary">
         <div><span>历史累计额外还本</span><strong id="historicalExtraPrincipal">—</strong></div>
         <div><span>历史已省利息</span><strong id="historicalInterestSaved">待校准</strong></div>
-        <div><span>未来计划可省利息</span><strong id="futurePlannedInterestSavedInHistory">—</strong></div>
+        <div><span id="futurePlannedInterestSavedLabel">未来累计预计省息</span><strong id="futurePlannedInterestSavedInHistory">—</strong></div>
       </div>
       <p class="history-local-note">“历史累计额外还本”按官网本金、利息和当月正常还款额精确拆分；“历史已省利息”暂不显示估算值，等历史路径校准完成后再开启，避免给出虚高数字。</p>
     </section>
@@ -430,6 +430,7 @@ function renderHistoricalPrepayments() {
     } catch {}
   }
   $('#futurePlannedInterestSavedInHistory').textContent = money(futureSaved)
+  $('#futurePlannedInterestSavedLabel').textContent = futurePlanEntries.length ? '未来累计预计省息' : '本月计划预计省息'
 }
 
 function renderFuturePlan() {
@@ -461,7 +462,7 @@ function renderFuturePlan() {
   const futureSteps = result.steps.filter((step) => step.month !== currentMonth)
   const list = $('#futurePlanList')
   if (!futureSteps.length) {
-    list.innerHTML = '<div class="history-empty">先加入下个月或更晚的计划，就能看到每一步叠加后的预计余额。</div>'
+    list.innerHTML = '<div class="history-empty">当前没有额外的未来月份计划。上方“本月计划”仍会参与省息测算；加入下个月或更晚的计划后，这里会累计显示未来路线。</div>'
   } else {
     list.innerHTML = futureSteps.map((step) => `
       <article class="history-item">
