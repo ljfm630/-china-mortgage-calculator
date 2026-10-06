@@ -203,9 +203,9 @@ $('#app').innerHTML = `
     <section class="card" aria-labelledby="history-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">史</span>
-        <div><span class="eyebrow">最后回看过去 · 仅保存在本设备</span><h2 id="history-title">我的还款记录</h2></div>
+        <div><span class="eyebrow">过去的提前还款 · 仅保存在本设备</span><h2 id="history-title">历史提前还款记录</h2></div>
       </div>
-      <p class="utility-copy">按公积金官网原始记录填写，不需要自己判断“哪一部分算提前还款”。系统会自动拆出额外还本。</p>
+      <p class="utility-copy">每次提前还款单独记一笔，系统自动累计叠加。只需要照公积金官网填写总还款、本金、利息和当月正常还款额。</p>
 
       <div class="history-form">
         <label class="money-field">
@@ -220,10 +220,10 @@ $('#app').innerHTML = `
       <button id="addHistoricalPrepayment" class="primary-button" type="button">加入还款记录</button>
       <p id="historyHint" class="field-note" hidden></p>
 
-      <div id="historicalPrepaymentList" class="future-list"></div>
+      <div class="history-count-row"><span>累计已记录</span><strong id="historicalRecordCount">0 次</strong></div><div id="historicalPrepaymentList" class="future-list"></div>
 
       <div class="history-relief-summary">
-        <div><span>历史累计额外还本</span><strong id="historicalExtraPrincipal">—</strong></div>
+        <div><span>累计额外还本</span><strong id="historicalExtraPrincipal">—</strong></div>
         <div><span>历史已省利息</span><strong id="historicalInterestSaved">待校准</strong></div>
         <div><span>未来计划可省利息</span><strong id="futurePlannedInterestSavedInHistory">—</strong></div>
       </div>
@@ -389,6 +389,7 @@ function historyExtraPrincipal(entry) {
 
 function renderHistoricalPrepayments() {
   const list = $('#historicalPrepaymentList')
+  $('#historicalRecordCount').textContent = `${historicalPrepayments.length} 次`
   if (!historicalPrepayments.length) {
     list.innerHTML = '<div class="history-empty">按官网记录加入过去明显多还的月份。系统会用“官网本金 − 正常月供中的本金”识别真正的额外还本。</div>'
   } else {
