@@ -153,3 +153,12 @@ footer { padding: 8px 25px max(26px, env(safe-area-inset-bottom)); color: #8e8e9
 .interest-progress-fill { background: #b06a42; }
 
 .select-input select { width:100%; border:0; outline:0; background:transparent; color:#1d1d1f; font:inherit; font-size:16px; font-weight:650; appearance:auto; }
+
+.history-form { display:grid; gap:14px; }
+.history-relief-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; margin-top:16px; overflow:hidden; border:1px solid #e8e8ec; border-radius:15px; background:#e8e8ec; }
+.history-relief-summary div { min-width:0; padding:14px 10px; background:#fff; }
+.history-relief-summary span { display:block; color:#8a8a8f; font-size:9px; line-height:1.35; }
+.history-relief-summary strong { display:block; margin-top:6px; font-size:12px; overflow-wrap:anywhere; }
+.history-relief-summary div:nth-child(2) strong,
+.history-relief-summary div:nth-child(4) strong { color:#1d6b42; }
+@media (min-width:560px) { .history-form { grid-template-columns:1fr 1fr 1fr; } }
