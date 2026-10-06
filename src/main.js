@@ -7,6 +7,7 @@ const STORAGE_KEY = 'gjj-prepayment-planner-v3'
 const PROFILE_STORAGE_KEY = 'gjj-loan-profile-v1'
 const FUTURE_PLAN_STORAGE_KEY = 'gjj-future-payment-plan-v1'
 const HISTORY_STORAGE_KEY = 'gjj-historical-prepayment-v2'
+const MONTHLY_UPDATE_STORAGE_KEY = 'gjj-monthly-update-v1'
 const DEFAULTS = {
   currentBalance: 0,
   minimumPayment: 0,
@@ -33,6 +34,7 @@ if (stored.totalMonthlyPayment === undefined) {
 let totalPaymentWasEdited = stored.totalMonthlyPayment !== undefined
 let futurePlanEntries = loadFuturePlan()
 let historicalPrepayments = loadHistoricalPrepayments()
+let monthlyUpdates = loadMonthlyUpdates()
 
 const $ = (selector) => document.querySelector(selector)
 const requiredElement = (selector) => {
@@ -120,6 +122,27 @@ $('#app').innerHTML = `
         </dl>
 
       </details>
+    </section>
+
+    <section class="card monthly-update-card" aria-labelledby="monthly-update-title">
+      <div class="section-heading">
+        <span class="section-icon green-icon" aria-hidden="true">更</span>
+        <div><span class="eyebrow">每月还款后更新一次</span><h2 id="monthly-update-title">本月数据更新</h2></div>
+      </div>
+      <p class="utility-copy">只填两个数：公积金官网最新贷款余额 + 本月实际利息。保存后自动更新累计利息、本金进度和未来利息测算。</p>
+      <div class="monthly-update-grid">
+        <label class="money-field">
+          <span>更新月份</span>
+          <div class="money-input"><input id="monthlyUpdateMonth" type="month" aria-label="更新月份"></div>
+        </label>
+        ${plainMoneyInput('monthlyUpdateBalance', '最新贷款余额')}
+        ${plainMoneyInput('monthlyUpdateInterest', '本月实际利息')}
+      </div>
+      <button id="saveMonthlyUpdate" class="primary-button" type="button">保存本月数据</button>
+      <p id="monthlyUpdateHint" class="field-note" hidden></p>
+      <div class="monthly-update-status">
+        <span>已更新月份</span><strong id="monthlyUpdateCount">0 次</strong>
+      </div>
     </section>
 
     <section class="card" aria-labelledby="fund-title">
@@ -296,10 +319,12 @@ const simulationElements = {
 
 requiredElement('#futurePlanMonth').value = nextMonthValue()
 requiredElement('#historyMonth').value = previousMonthValue()
+requiredElement('#monthlyUpdateMonth').value = currentMonthValue()
 requiredElement('#futurePlanTotal').value = state.totalMonthlyPayment
 renderProfile()
 renderFuturePlan()
 renderHistoricalPrepayments()
+renderMonthlyUpdateStatus()
 
 
 function render() {
@@ -379,6 +404,7 @@ function render() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   renderFuturePlan()
   renderHistoricalPrepayments()
+  renderMonthlyUpdateStatus()
   renderProfile()
 }
 
@@ -489,7 +515,7 @@ function renderFuturePlan() {
 }
 
 function exportData() {
-  const payload = { version: 4, exportedAt: new Date().toISOString(), loanProfile, state, futurePlanEntries, historicalPrepayments }
+  const payload = { version: 5, exportedAt: new Date().toISOString(), loanProfile, state, futurePlanEntries, historicalPrepayments, monthlyUpdates }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -584,6 +610,23 @@ function renderProfile() {
   const hint=$('#profileHint'); hint.hidden=profileReady(); if(!profileReady()) hint.textContent='请填写原贷款金额、当前年利率和官方剩余期数后开始测算。'
 }
 function setCalculationUnavailable() { simulationElements.plannedMonths.textContent='待设置'; simulationElements.monthsSaved.textContent='—'; simulationElements.interestSaved.textContent='—'; simulationElements.principalBefore.textContent='—'; simulationElements.appliedAmount.textContent='—'; simulationElements.principalAfter.textContent='—'; $('#baselineRemainingInterest').textContent='—'; $('#interestReducedAmount').textContent='—'; $('#remainingFutureInterest').textContent='—' }
+function loadMonthlyUpdates() {
+  try {
+    const value = JSON.parse(localStorage.getItem(MONTHLY_UPDATE_STORAGE_KEY))
+    return Array.isArray(value)
+      ? value.filter((entry) => /^\d{4}-\d{2}$/.test(entry.month) && Number.isFinite(Number(entry.balance)) && Number.isFinite(Number(entry.interest)))
+          .map((entry) => ({ month: entry.month, balance: Number(entry.balance), interest: Number(entry.interest) }))
+      : []
+  } catch {
+    return []
+  }
+}
+function saveMonthlyUpdates() { localStorage.setItem(MONTHLY_UPDATE_STORAGE_KEY, JSON.stringify(monthlyUpdates)) }
+function renderMonthlyUpdateStatus() {
+  const count = $('#monthlyUpdateCount')
+  if (count) count.textContent = `${monthlyUpdates.length} 次`
+}
+
 function loadStoredState() {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY))
@@ -624,16 +667,18 @@ document.addEventListener('change', (event) => {
     const hint = $('#dataHint')
     try {
       const payload = JSON.parse(String(reader.result))
-      if (!payload || ![1,2,3,4].includes(payload.version) || typeof payload.state !== 'object' || !Array.isArray(payload.futurePlanEntries)) throw new Error('备份文件格式不正确。')
+      if (!payload || ![1,2,3,4,5].includes(payload.version) || typeof payload.state !== 'object' || !Array.isArray(payload.futurePlanEntries)) throw new Error('备份文件格式不正确。')
       const importedState = { ...DEFAULTS, ...payload.state }
       if(payload.version>=2 && payload.loanProfile && typeof payload.loanProfile==='object') Object.assign(loanProfile,{...PROFILE_DEFAULTS,...payload.loanProfile})
       if(payload.version>=4 && Array.isArray(payload.historicalPrepayments)) historicalPrepayments = payload.historicalPrepayments.filter((entry) => /^\\d{4}-\\d{2}$/.test(entry.month) && ['actualPayment','principal','interest','normalPayment'].every((key) => Number.isFinite(Number(entry[key])))).map((entry) => ({ month: entry.month, actualPayment: Number(entry.actualPayment), principal: Number(entry.principal), interest: Number(entry.interest), normalPayment: Number(entry.normalPayment) }))
+      if(payload.version>=5 && Array.isArray(payload.monthlyUpdates)) monthlyUpdates = payload.monthlyUpdates.filter((entry) => /^\\d{4}-\\d{2}$/.test(entry.month) && Number.isFinite(Number(entry.balance)) && Number.isFinite(Number(entry.interest))).map((entry) => ({ month: entry.month, balance: Number(entry.balance), interest: Number(entry.interest) }))
       for (const key of ['currentBalance', 'minimumPayment', 'savings', 'totalMonthlyPayment']) if (!Number.isFinite(Number(importedState[key])) || Number(importedState[key]) < 0) throw new Error('备份文件中的贷款数据无效。')
       futurePlanEntries = payload.futurePlanEntries.filter((entry) => /^\d{4}-\d{2}$/.test(entry.month) && Number.isFinite(Number(entry.totalPayment))).map((entry) => ({ month: entry.month, totalPayment: Number(entry.totalPayment) }))
       Object.assign(state, importedState)
       totalPaymentWasEdited = true
       saveFuturePlan()
       saveHistoricalPrepayments()
+      saveMonthlyUpdates()
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
       hint.hidden = false
       hint.textContent = '数据已恢复。'
@@ -645,6 +690,44 @@ document.addEventListener('change', (event) => {
 })
 
 document.addEventListener('click', (event) => {
+  if (event.target.id === 'saveMonthlyUpdate') {
+    const month = $('#monthlyUpdateMonth').value
+    const balance = Number($('#monthlyUpdateBalance').value)
+    const interest = Number($('#monthlyUpdateInterest').value)
+    const hint = $('#monthlyUpdateHint')
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      hint.hidden = false
+      hint.textContent = '请选择更新月份。'
+      return
+    }
+    if (!Number.isFinite(balance) || balance < 0 || !Number.isFinite(interest) || interest < 0) {
+      hint.hidden = false
+      hint.textContent = '请填写官网最新贷款余额和本月实际利息。'
+      return
+    }
+
+    const existing = monthlyUpdates.find((entry) => entry.month === month)
+    if (existing) {
+      loanProfile.paidInterest = Math.max(0, Number(loanProfile.paidInterest || 0) - Number(existing.interest || 0) + interest)
+      existing.balance = balance
+      existing.interest = interest
+    } else {
+      monthlyUpdates.push({ month, balance, interest })
+      monthlyUpdates.sort((a, b) => a.month.localeCompare(b.month))
+      loanProfile.paidInterest = Math.max(0, Number(loanProfile.paidInterest || 0) + interest)
+    }
+    state.currentBalance = balance
+    saveMonthlyUpdates()
+    saveLoanProfile()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    hint.hidden = false
+    hint.textContent = existing ? '已更新本月数据，累计利息已同步修正。' : '已保存，本金、累计利息和未来测算已更新。'
+    $('#monthlyUpdateBalance').value = ''
+    $('#monthlyUpdateInterest').value = ''
+    render()
+    return
+  }
+
   if (event.target.id === 'addHistoricalPrepayment') {
     const month = $('#historyMonth').value
     const actualPayment = Number($('#historyActualPayment').value)
