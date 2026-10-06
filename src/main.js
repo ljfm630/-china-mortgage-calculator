@@ -6,7 +6,7 @@ import { simulateFuturePlan } from './future-plan.js'
 const STORAGE_KEY = 'gjj-prepayment-planner-v3'
 const PROFILE_STORAGE_KEY = 'gjj-loan-profile-v1'
 const FUTURE_PLAN_STORAGE_KEY = 'gjj-future-payment-plan-v1'
-const HISTORY_STORAGE_KEY = 'gjj-historical-prepayment-v1'
+const HISTORY_STORAGE_KEY = 'gjj-historical-prepayment-v2'
 const DEFAULTS = {
   currentBalance: 0,
   minimumPayment: 0,
@@ -57,25 +57,10 @@ $('#app').innerHTML = `
   </header>
 
   <main>
-    <section class="card profile-card" aria-labelledby="profile-title">
-      <div class="section-heading"><span class="section-icon" aria-hidden="true">设</span><div><span class="eyebrow">仅保存在本设备</span><h2 id="profile-title">我的贷款参数</h2></div></div>
-      <p class="utility-copy">这些参数不写入网页代码，只保存在你当前设备的浏览器中。第一次使用时填写一次即可。</p>
-      <div class="profile-grid">
-        ${profileInput('profileOriginalPrincipal', '原贷款金额', 'originalPrincipal', 'number')}
-        ${profileInput('profileAnnualRate', '当前年利率', 'annualRate', 'number')}
-        ${profileInput('profileOfficialRemainingMonths', '当前实际剩余期数', 'officialRemainingMonths', 'number')}
-        ${profileInput('profileLoanDate', '放款日期', 'loanDate', 'date')}
-        ${repaymentMethodInput()}
-        ${profileInput('profileOriginalTermMonths', '原贷款期限（月）', 'originalTermMonths', 'number')}
-        ${profileInput('profilePaidInterest', '累计已支付利息', 'paidInterest', 'number')}
-      </div>
-      <p id="profileHint" class="field-note" hidden></p>
-    </section>
-
     <section class="card" aria-labelledby="loan-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">贷</span>
-        <div><span class="eyebrow">国管公积金系统实际数据</span><h2 id="loan-title">当前贷款</h2></div>
+        <div><span class="eyebrow">先看现在</span><h2 id="loan-title">房贷总览</h2></div>
       </div>
 
       <div class="input-list">
@@ -109,17 +94,17 @@ $('#app').innerHTML = `
 
         <div class="progress-block interest-progress-block">
           <div class="progress-head">
-            <span>未来利息减负</span>
+            <span>未来可省利息</span>
             <strong id="interestReductionPercent">—</strong>
           </div>
           <div class="progress-track" aria-hidden="true"><div id="interestReductionFill" class="progress-fill interest-progress-fill"></div></div>
           <div class="progress-stats">
-            <div><span>预计少付利息</span><strong id="interestReducedAmount">—</strong></div>
+            <div><span>按当前未来计划可少付</span><strong id="interestReducedAmount">—</strong></div>
             <div><span>基准剩余利息</span><strong id="baselineRemainingInterest">—</strong></div>
           </div>
         </div>
 
-        <small>本金进度按原贷款本金与当前余额计算；利息减负按“仅按当前最低还款”与当前规划对比。</small>
+        <small>本金进度按原贷款本金与当前余额计算；未来可省利息按“只还当前最低还款”与已设置的全部未来计划对比。</small>
       </div>
 
       <details class="loan-details">
@@ -134,39 +119,10 @@ $('#app').innerHTML = `
       </details>
     </section>
 
-    <section class="card" aria-labelledby="history-title">
-      <div class="section-heading">
-        <span class="section-icon" aria-hidden="true">史</span>
-        <div><span class="eyebrow">仅保存在本设备</span><h2 id="history-title">历史提前还款</h2></div>
-      </div>
-      <p class="utility-copy">记录过去实际多还的金额。历史记录不会写进公开网页代码，只保存在你当前设备。</p>
-
-      <div class="history-form">
-        <label class="money-field">
-          <span>还款月份</span>
-          <div class="money-input"><input id="historyMonth" type="month" aria-label="历史还款月份"></div>
-        </label>
-        ${plainMoneyInput('historyActualPayment', '当月实际总还款')}
-        ${plainMoneyInput('historyNormalPayment', '当月正常还款额')}
-      </div>
-      <button id="addHistoricalPrepayment" class="primary-button" type="button">加入历史记录</button>
-      <p id="historyHint" class="field-note" hidden></p>
-
-      <div id="historicalPrepaymentList" class="future-list"></div>
-
-      <div class="history-relief-summary">
-        <div><span>历史累计额外还本</span><strong id="historicalExtraPrincipal">—</strong></div>
-        <div><span>历史形成的未来利息减负</span><strong id="historicalRemainingInterestSaved">—</strong></div>
-        <div><span>未来计划预计减负</span><strong id="futurePlannedInterestSavedInHistory">—</strong></div>
-        <div><span>累计预计利息减负</span><strong id="combinedInterestRelief">—</strong></div>
-      </div>
-      <p class="history-local-note">历史减负采用保守口径：把历史额外还本视为当前本金差额，比较“当前余额”与“假设从未额外还本”的剩余利息。已经在过去月份实际少付掉的利息不再反推，避免夸大或重复计算。</p>
-    </section>
-
     <section class="card" aria-labelledby="fund-title">
       <div class="section-heading">
         <span class="section-icon green-icon" aria-hidden="true">¥</span>
-        <div><span class="eyebrow">现金安排</span><h2 id="fund-title">我的资金</h2></div>
+        <div><span class="eyebrow">再做决定</span><h2 id="fund-title">本月可用资金</h2></div>
       </div>
 
       ${moneyInput('savings', '当前可支配存款')}
@@ -181,7 +137,7 @@ $('#app').innerHTML = `
     <section class="card" aria-labelledby="simulation-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">算</span>
-        <div><span class="eyebrow">本月决策</span><h2 id="simulation-title">本月还款规划</h2></div>
+        <div><span class="eyebrow">本月怎么还</span><h2 id="simulation-title">本月还款决策</h2></div>
       </div>
 
       ${moneyInput('totalMonthlyPayment', '本月计划总还款额')}
@@ -214,7 +170,7 @@ $('#app').innerHTML = `
     <section class="card" aria-labelledby="future-plan-title">
       <div class="section-heading">
         <span class="section-icon" aria-hidden="true">策</span>
-        <div><span class="eyebrow">多月叠加</span><h2 id="future-plan-title">未来还款计划</h2></div>
+        <div><span class="eyebrow">再看未来</span><h2 id="future-plan-title">我的还款路线</h2></div>
       </div>
 
       <div class="future-current">
@@ -237,11 +193,56 @@ $('#app').innerHTML = `
       <div class="future-summary">
         <div><span>叠加计划后预计剩余</span><strong id="futurePlannedMonths">—</strong></div>
         <div><span>预计累计缩短</span><strong id="futureMonthsSaved">—</strong></div>
-        <div><span>预计累计节省利息</span><strong id="futureInterestSaved">—</strong></div>
+        <div><span>未来计划可省利息</span><strong id="futureInterestSaved">—</strong></div>
         <div><span>预计结清</span><strong id="futurePayoffDate">—</strong></div>
       </div>
       <div class="future-actions"><button id="clearFuturePlan" class="secondary-button" type="button">清空未来计划</button></div>
       <p class="history-local-note">余额为从当前月份起连续执行计划后的累计预计值；每月总还款会先覆盖当月预计利息，剩余部分才减少本金。</p>
+    </section>
+
+    <section class="card" aria-labelledby="history-title">
+      <div class="section-heading">
+        <span class="section-icon" aria-hidden="true">史</span>
+        <div><span class="eyebrow">最后回看过去 · 仅保存在本设备</span><h2 id="history-title">我的还款记录</h2></div>
+      </div>
+      <p class="utility-copy">按公积金官网原始记录填写，不需要自己判断“哪一部分算提前还款”。系统会自动拆出额外还本。</p>
+
+      <div class="history-form">
+        <label class="money-field">
+          <span>还款月份</span>
+          <div class="money-input"><input id="historyMonth" type="month" aria-label="历史还款月份"></div>
+        </label>
+        ${plainMoneyInput('historyActualPayment', '实际总还款')}
+        ${plainMoneyInput('historyPrincipal', '其中本金')}
+        ${plainMoneyInput('historyInterest', '其中利息')}
+        ${plainMoneyInput('historyNormalPayment', '当月正常还款额')}
+      </div>
+      <button id="addHistoricalPrepayment" class="primary-button" type="button">加入还款记录</button>
+      <p id="historyHint" class="field-note" hidden></p>
+
+      <div id="historicalPrepaymentList" class="future-list"></div>
+
+      <div class="history-relief-summary">
+        <div><span>历史累计额外还本</span><strong id="historicalExtraPrincipal">—</strong></div>
+        <div><span>历史已省利息</span><strong id="historicalInterestSaved">待校准</strong></div>
+        <div><span>未来计划可省利息</span><strong id="futurePlannedInterestSavedInHistory">—</strong></div>
+      </div>
+      <p class="history-local-note">“历史累计额外还本”按官网本金、利息和当月正常还款额精确拆分；“历史已省利息”暂不显示估算值，等历史路径校准完成后再开启，避免给出虚高数字。</p>
+    </section>
+
+    <section class="card profile-card" aria-labelledby="profile-title">
+      <div class="section-heading"><span class="section-icon" aria-hidden="true">设</span><div><span class="eyebrow">设置 · 不常改</span><h2 id="profile-title">贷款参数</h2></div></div>
+      <p class="utility-copy">这些参数只保存在当前设备。平时不用反复查看，需要变更时再来这里修改。</p>
+      <div class="profile-grid">
+        ${profileInput('profileOriginalPrincipal', '原贷款金额', 'originalPrincipal', 'number')}
+        ${profileInput('profileAnnualRate', '当前年利率', 'annualRate', 'number')}
+        ${profileInput('profileOfficialRemainingMonths', '当前实际剩余期数', 'officialRemainingMonths', 'number')}
+        ${profileInput('profileLoanDate', '放款日期', 'loanDate', 'date')}
+        ${repaymentMethodInput()}
+        ${profileInput('profileOriginalTermMonths', '原贷款期限（月）', 'originalTermMonths', 'number')}
+        ${profileInput('profilePaidInterest', '累计已支付利息', 'paidInterest', 'number')}
+      </div>
+      <p id="profileHint" class="field-note" hidden></p>
     </section>
 
     <section class="card utility-card" aria-labelledby="data-title">
@@ -342,7 +343,20 @@ function render() {
     monthlyPayment: state.minimumPayment,
   })
   const baselineRemainingInterest = baselineProjection.payable ? baselineProjection.totalInterest : 0
-  const interestReduced = Math.max(0, Number(result.estimatedInterestSaved) || 0)
+  let futurePlanInterestSaved = Math.max(0, Number(result.estimatedInterestSaved) || 0)
+  try {
+    const currentMonth = currentMonthValue()
+    const fullFuturePlan = simulateFuturePlan({
+      currentPrincipal: state.currentBalance,
+      annualRate: loanProfile.annualRate,
+      currentMinimumPayment: state.minimumPayment,
+      officialRemainingMonths: loanProfile.officialRemainingMonths,
+      startMonth: currentMonth,
+      entries: [{ month: currentMonth, totalPayment: state.totalMonthlyPayment }, ...futurePlanEntries],
+    })
+    if (fullFuturePlan.payable) futurePlanInterestSaved = Math.max(0, Number(fullFuturePlan.estimatedInterestSaved) || 0)
+  } catch {}
+  const interestReduced = futurePlanInterestSaved
   const interestReductionPercent = baselineRemainingInterest > 0
     ? Math.min(100, interestReduced / baselineRemainingInterest * 100)
     : 0
@@ -368,18 +382,25 @@ function render() {
   renderProfile()
 }
 
+function historyExtraPrincipal(entry) {
+  const normalPrincipal = Math.max(0, Number(entry.normalPayment) - Number(entry.interest))
+  return Math.max(0, Number(entry.principal) - normalPrincipal)
+}
+
 function renderHistoricalPrepayments() {
   const list = $('#historicalPrepaymentList')
   if (!historicalPrepayments.length) {
-    list.innerHTML = '<div class="history-empty">把过去明显多还的月份加进来，例如10万元那次、5000元那次，以及其他高于当月正常还款额的记录。</div>'
+    list.innerHTML = '<div class="history-empty">按官网记录加入过去明显多还的月份。系统会用“官网本金 − 正常月供中的本金”识别真正的额外还本。</div>'
   } else {
     list.innerHTML = historicalPrepayments.map((entry) => {
-      const extra = Math.max(0, Number(entry.actualPayment) - Number(entry.normalPayment))
+      const extra = historyExtraPrincipal(entry)
       return `
         <article class="history-item">
           <div class="history-date">${entry.month}</div>
           <div class="history-item-grid">
             <div><span>实际总还款</span><strong>${money(entry.actualPayment)}</strong></div>
+            <div><span>其中本金</span><strong>${money(entry.principal)}</strong></div>
+            <div><span>其中利息</span><strong>${money(entry.interest)}</strong></div>
             <div><span>当月正常还款</span><strong>${money(entry.normalPayment)}</strong></div>
             <div><span>识别为额外还本</span><strong>${money(extra)}</strong></div>
           </div>
@@ -389,50 +410,26 @@ function renderHistoricalPrepayments() {
     }).join('')
   }
 
-  const totalExtra = historicalPrepayments.reduce(
-    (sum, entry) => sum + Math.max(0, Number(entry.actualPayment) - Number(entry.normalPayment)),
-    0
-  )
+  const totalExtra = historicalPrepayments.reduce((sum, entry) => sum + historyExtraPrincipal(entry), 0)
   $('#historicalExtraPrincipal').textContent = money(totalExtra)
-
-  if (!profileReady() || state.currentBalance <= 0 || state.minimumPayment <= 0) {
-    $('#historicalRemainingInterestSaved').textContent = '待完善'
-    $('#futurePlannedInterestSavedInHistory').textContent = '待完善'
-    $('#combinedInterestRelief').textContent = '待完善'
-    return
-  }
-
-  const actualProjection = projectLoan({
-    principal: state.currentBalance,
-    annualRate: loanProfile.annualRate,
-    monthlyPayment: state.minimumPayment,
-  })
-  const counterfactualProjection = projectLoan({
-    principal: state.currentBalance + totalExtra,
-    annualRate: loanProfile.annualRate,
-    monthlyPayment: state.minimumPayment,
-  })
-  const historicalSaved = actualProjection.payable && counterfactualProjection.payable
-    ? Math.max(0, counterfactualProjection.totalInterest - actualProjection.totalInterest)
-    : 0
+  $('#historicalInterestSaved').textContent = '待校准'
 
   let futureSaved = 0
-  try {
-    const currentMonth = currentMonthValue()
-    const futureResult = simulateFuturePlan({
-      currentPrincipal: state.currentBalance,
-      annualRate: loanProfile.annualRate,
-      currentMinimumPayment: state.minimumPayment,
-      officialRemainingMonths: loanProfile.officialRemainingMonths,
-      startMonth: currentMonth,
-      entries: [{ month: currentMonth, totalPayment: state.totalMonthlyPayment }, ...futurePlanEntries],
-    })
-    futureSaved = futureResult.payable ? Math.max(0, Number(futureResult.estimatedInterestSaved) || 0) : 0
-  } catch {}
-
-  $('#historicalRemainingInterestSaved').textContent = money(historicalSaved)
+  if (profileReady() && state.currentBalance > 0 && state.minimumPayment > 0) {
+    try {
+      const currentMonth = currentMonthValue()
+      const futureResult = simulateFuturePlan({
+        currentPrincipal: state.currentBalance,
+        annualRate: loanProfile.annualRate,
+        currentMinimumPayment: state.minimumPayment,
+        officialRemainingMonths: loanProfile.officialRemainingMonths,
+        startMonth: currentMonth,
+        entries: [{ month: currentMonth, totalPayment: state.totalMonthlyPayment }, ...futurePlanEntries],
+      })
+      futureSaved = futureResult.payable ? Math.max(0, Number(futureResult.estimatedInterestSaved) || 0) : 0
+    } catch {}
+  }
   $('#futurePlannedInterestSavedInHistory').textContent = money(futureSaved)
-  $('#combinedInterestRelief').textContent = money(historicalSaved + futureSaved)
 }
 
 function renderFuturePlan() {
@@ -490,7 +487,7 @@ function renderFuturePlan() {
 }
 
 function exportData() {
-  const payload = { version: 3, exportedAt: new Date().toISOString(), loanProfile, state, futurePlanEntries, historicalPrepayments }
+  const payload = { version: 4, exportedAt: new Date().toISOString(), loanProfile, state, futurePlanEntries, historicalPrepayments }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -523,8 +520,17 @@ function loadHistoricalPrepayments() {
     const value = JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY))
     return Array.isArray(value)
       ? value
-          .filter((entry) => /^\d{4}-\d{2}$/.test(entry.month) && Number.isFinite(Number(entry.actualPayment)) && Number.isFinite(Number(entry.normalPayment)))
-          .map((entry) => ({ month: entry.month, actualPayment: Number(entry.actualPayment), normalPayment: Number(entry.normalPayment) }))
+          .filter((entry) =>
+            /^\d{4}-\d{2}$/.test(entry.month) &&
+            ['actualPayment','principal','interest','normalPayment'].every((key) => Number.isFinite(Number(entry[key])))
+          )
+          .map((entry) => ({
+            month: entry.month,
+            actualPayment: Number(entry.actualPayment),
+            principal: Number(entry.principal),
+            interest: Number(entry.interest),
+            normalPayment: Number(entry.normalPayment),
+          }))
       : []
   } catch {
     return []
@@ -616,10 +622,10 @@ document.addEventListener('change', (event) => {
     const hint = $('#dataHint')
     try {
       const payload = JSON.parse(String(reader.result))
-      if (!payload || ![1,2,3].includes(payload.version) || typeof payload.state !== 'object' || !Array.isArray(payload.futurePlanEntries)) throw new Error('备份文件格式不正确。')
+      if (!payload || ![1,2,3,4].includes(payload.version) || typeof payload.state !== 'object' || !Array.isArray(payload.futurePlanEntries)) throw new Error('备份文件格式不正确。')
       const importedState = { ...DEFAULTS, ...payload.state }
       if(payload.version>=2 && payload.loanProfile && typeof payload.loanProfile==='object') Object.assign(loanProfile,{...PROFILE_DEFAULTS,...payload.loanProfile})
-      if(payload.version>=3 && Array.isArray(payload.historicalPrepayments)) historicalPrepayments = payload.historicalPrepayments.filter((entry) => /^\\d{4}-\\d{2}$/.test(entry.month) && Number.isFinite(Number(entry.actualPayment)) && Number.isFinite(Number(entry.normalPayment))).map((entry) => ({ month: entry.month, actualPayment: Number(entry.actualPayment), normalPayment: Number(entry.normalPayment) }))
+      if(payload.version>=4 && Array.isArray(payload.historicalPrepayments)) historicalPrepayments = payload.historicalPrepayments.filter((entry) => /^\\d{4}-\\d{2}$/.test(entry.month) && ['actualPayment','principal','interest','normalPayment'].every((key) => Number.isFinite(Number(entry[key])))).map((entry) => ({ month: entry.month, actualPayment: Number(entry.actualPayment), principal: Number(entry.principal), interest: Number(entry.interest), normalPayment: Number(entry.normalPayment) }))
       for (const key of ['currentBalance', 'minimumPayment', 'savings', 'totalMonthlyPayment']) if (!Number.isFinite(Number(importedState[key])) || Number(importedState[key]) < 0) throw new Error('备份文件中的贷款数据无效。')
       futurePlanEntries = payload.futurePlanEntries.filter((entry) => /^\d{4}-\d{2}$/.test(entry.month) && Number.isFinite(Number(entry.totalPayment))).map((entry) => ({ month: entry.month, totalPayment: Number(entry.totalPayment) }))
       Object.assign(state, importedState)
@@ -640,34 +646,38 @@ document.addEventListener('click', (event) => {
   if (event.target.id === 'addHistoricalPrepayment') {
     const month = $('#historyMonth').value
     const actualPayment = Number($('#historyActualPayment').value)
+    const principal = Number($('#historyPrincipal').value)
+    const interest = Number($('#historyInterest').value)
     const normalPayment = Number($('#historyNormalPayment').value)
     const hint = $('#historyHint')
+
     if (!/^\d{4}-\d{2}$/.test(month)) {
       hint.hidden = false
       hint.textContent = '请选择有效的还款月份。'
       return
     }
-    if (!Number.isFinite(actualPayment) || !Number.isFinite(normalPayment) || actualPayment <= 0 || normalPayment <= 0) {
+    const values = [actualPayment, principal, interest, normalPayment]
+    if (values.some((value) => !Number.isFinite(value) || value < 0) || actualPayment <= 0 || normalPayment <= 0) {
       hint.hidden = false
-      hint.textContent = '请填写当月实际总还款和当月正常还款额。'
+      hint.textContent = '请按官网记录填写总还款、本金、利息和当月正常还款额。'
       return
     }
-    if (actualPayment < normalPayment) {
+    if (Math.abs((principal + interest) - actualPayment) > 0.05) {
       hint.hidden = false
-      hint.textContent = '实际总还款低于正常还款额，这一笔不会形成额外提前还本。'
+      hint.textContent = '本金 + 利息与实际总还款不一致，请核对官网数据。'
       return
     }
+
     const existing = historicalPrepayments.find((entry) => entry.month === month)
-    if (existing) {
-      existing.actualPayment = actualPayment
-      existing.normalPayment = normalPayment
-    } else {
-      historicalPrepayments.push({ month, actualPayment, normalPayment })
+    const next = { month, actualPayment, principal, interest, normalPayment }
+    if (existing) Object.assign(existing, next)
+    else {
+      historicalPrepayments.push(next)
       historicalPrepayments.sort((a, b) => a.month.localeCompare(b.month))
     }
     saveHistoricalPrepayments()
     hint.hidden = false
-    hint.textContent = existing ? '已更新该月历史记录。' : '已加入历史提前还款记录。'
+    hint.textContent = existing ? '已更新该月还款记录。' : '已加入还款记录。'
     renderHistoricalPrepayments()
     return
   }
