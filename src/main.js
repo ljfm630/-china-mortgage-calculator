@@ -53,7 +53,7 @@ $('#app').innerHTML = `
   <header class="page-header">
     <span class="eyebrow">个人还款规划</span>
     <h1>我的公积金还款规划</h1>
-    <p>看清余额，安排本月，规划未来。</p>
+    <p>看清现在，决定本月，减少未来利息。</p>
   </header>
 
   <main>
@@ -92,19 +92,22 @@ $('#app').innerHTML = `
           <small>按你录入的实际累计利息显示，用来提醒已经发生的融资成本。</small>
         </div>
 
-        <div class="progress-block interest-progress-block">
-          <div class="progress-head">
-            <span>未来可省利息</span>
-            <strong id="interestReductionPercent">—</strong>
+        <div class="future-interest-summary" aria-label="从今天开始的未来利息">
+          <div>
+            <span>原计划未来利息</span>
+            <strong id="baselineRemainingInterest">—</strong>
           </div>
-          <div class="progress-track" aria-hidden="true"><div id="interestReductionFill" class="progress-fill interest-progress-fill"></div></div>
-          <div class="progress-stats">
-            <div><span>按当前未来计划可少付</span><strong id="interestReducedAmount">—</strong></div>
-            <div><span>基准剩余利息</span><strong id="baselineRemainingInterest">—</strong></div>
+          <div>
+            <span>当前计划已省</span>
+            <strong id="interestReducedAmount">—</strong>
+          </div>
+          <div>
+            <span>计划后剩余利息</span>
+            <strong id="remainingFutureInterest">—</strong>
           </div>
         </div>
 
-        <small>本金进度按原贷款本金与当前余额计算；未来可省利息按“只还当前最低还款”与已设置的全部未来计划对比。</small>
+        <small>从今天开始计算：原计划=以后只按当前最低还款；已省=本月与未来计划带来的预计省息；剩余=原计划未来利息−已省。</small>
       </div>
 
       <details class="loan-details">
@@ -357,13 +360,10 @@ function render() {
     if (fullFuturePlan.payable) futurePlanInterestSaved = Math.max(0, Number(fullFuturePlan.estimatedInterestSaved) || 0)
   } catch {}
   const interestReduced = futurePlanInterestSaved
-  const interestReductionPercent = baselineRemainingInterest > 0
-    ? Math.min(100, interestReduced / baselineRemainingInterest * 100)
-    : 0
+  const remainingFutureInterest = Math.max(0, baselineRemainingInterest - interestReduced)
   $('#baselineRemainingInterest').textContent = baselineProjection.payable ? money(baselineRemainingInterest) : '待完善'
   $('#interestReducedAmount').textContent = baselineProjection.payable ? money(interestReduced) : '待完善'
-  $('#interestReductionPercent').textContent = baselineProjection.payable ? `${interestReductionPercent.toFixed(1)}%` : '—'
-  $('#interestReductionFill').style.width = `${interestReductionPercent.toFixed(1)}%`
+  $('#remainingFutureInterest').textContent = baselineProjection.payable ? money(remainingFutureInterest) : '待完善'
 
   const warning = $('#amountWarning')
   const belowMinimum = totalMonthlyPayment < state.minimumPayment
@@ -583,7 +583,7 @@ function renderProfile() {
   $('#originalTermDisplay').textContent = Number(loanProfile.originalTermMonths) > 0 ? loanProfile.originalTermMonths+' 期' : '未设置'
   const hint=$('#profileHint'); hint.hidden=profileReady(); if(!profileReady()) hint.textContent='请填写原贷款金额、当前年利率和官方剩余期数后开始测算。'
 }
-function setCalculationUnavailable() { simulationElements.plannedMonths.textContent='待设置'; simulationElements.monthsSaved.textContent='—'; simulationElements.interestSaved.textContent='—'; simulationElements.principalBefore.textContent='—'; simulationElements.appliedAmount.textContent='—'; simulationElements.principalAfter.textContent='—'; $('#baselineRemainingInterest').textContent='—'; $('#interestReducedAmount').textContent='—'; $('#interestReductionPercent').textContent='—'; $('#interestReductionFill').style.width='0%' }
+function setCalculationUnavailable() { simulationElements.plannedMonths.textContent='待设置'; simulationElements.monthsSaved.textContent='—'; simulationElements.interestSaved.textContent='—'; simulationElements.principalBefore.textContent='—'; simulationElements.appliedAmount.textContent='—'; simulationElements.principalAfter.textContent='—'; $('#baselineRemainingInterest').textContent='—'; $('#interestReducedAmount').textContent='—'; $('#remainingFutureInterest').textContent='—' }
 function loadStoredState() {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY))
